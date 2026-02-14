@@ -41,19 +41,6 @@ pnpm --filter @meshtastic/web dev
 Once running, the site will be available at:  
 👉 **http://localhost:3000**
 
-### Allowed hosts for reverse proxy / tunnel / LAN
-Vite restricts `Host` headers in development. If you access Meshtastic Web through a reverse proxy, tunnel, or from another device on your LAN, configure allowed hosts with `VITE_ALLOWED_HOSTS`.
-
-Example in `packages/web/.env` (CSV format):
-
-```bash
-VITE_ALLOWED_HOSTS=localhost,127.0.0.1,backmsh.niccomale.it,my-tunnel.example.com,192.168.1.10
-```
-
-- The value is parsed as a comma-separated list.
-- Spaces are trimmed automatically.
-- If `VITE_ALLOWED_HOSTS` is not set, defaults are used: `localhost`, `127.0.0.1`, and `backmsh.niccomale.it`.
-
 ---
 
 ## 🗂 Repository Structure
