@@ -91,6 +91,51 @@ describe("createConfigBackupYaml", () => {
     expect(yaml).not.toContain("$typeName");
   });
 
+  it("serializes security block exactly like CLI", () => {
+    const channels = new Map([
+      [
+        0,
+        create(Protobuf.Channel.ChannelSchema, {
+          index: 0,
+          role: Protobuf.Channel.Channel_Role.PRIMARY,
+          settings: {
+            name: "Primary",
+          },
+        }),
+      ],
+    ]);
+
+    const config = create(Protobuf.LocalOnly.LocalConfigSchema, {
+      security: {
+        adminKey: [
+          new Uint8Array([
+            234, 46, 72, 154, 142, 143, 195, 50, 142, 153, 221, 14, 231, 29,
+            161, 123, 115, 168, 215, 39, 133, 86, 66, 244, 115, 58, 190, 77,
+            27, 112, 38, 109,
+          ]),
+        ],
+        privateKey: new Uint8Array([
+          32, 168, 100, 56, 10, 97, 53, 154, 248, 83, 222, 60, 30, 66, 177, 248,
+          157, 61, 132, 174, 193, 28, 32, 5, 190, 244, 21, 32, 44, 1, 144, 71,
+        ]),
+        publicKey: new Uint8Array([
+          175, 179, 184, 165, 39, 28, 32, 193, 151, 9, 73, 66, 36, 82, 84, 127,
+          25, 84, 182, 249, 205, 23, 111, 167, 200, 0, 237, 26, 63, 34, 244, 47,
+        ]),
+        serialEnabled: true,
+      },
+    });
+
+    const moduleConfig = create(Protobuf.LocalOnly.LocalModuleConfigSchema, {});
+
+    const yaml = createConfigBackupYaml({ channels, config, moduleConfig });
+
+    expect(yaml).toContain("  security:\n    adminKey:\n    - base64:6i5Imo6PwzKOmd0O5x2he3Oo1yeFVkL0czq+TRtwJm0=\n    - 'base64:'\n    - 'base64:'\n    privateKey: base64:IKhkOAphNZr4U948HkKx+J09hK7BHCAFvvQVICwBkEc=\n    publicKey: base64:r7O4pSccIMGXCUlCJFJUfxlUtvnNF2+nyADtGj8i9C8=\n    serialEnabled: true");
+    expect(yaml).not.toContain('privateKey: "base64:');
+    expect(yaml).not.toContain('publicKey: "base64:');
+    expect(yaml).not.toContain("\n      - base64:");
+  });
+
   it("prunes empty sections and avoids {} placeholders", () => {
     const channels = new Map([
       [
