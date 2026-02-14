@@ -1,5 +1,7 @@
-import { fromJson, toJson } from "@bufbuild/protobuf";
-import { Protobuf } from "@meshtastic/core";
+import { create, fromBinary, fromJson, toJson } from "@bufbuild/protobuf";
+import { createChannelShareUrl } from "@core/utils/channelUrl.ts";
+import { Protobuf, type Types } from "@meshtastic/core";
+import { toByteArray } from "base64-js";
 
 type SerializableValue =
   | string
@@ -253,6 +255,50 @@ const parseYamlSubset = (source: string): unknown => {
   return parseAtIndent(0);
 };
 
+
+const decodeChannelsFromChannelUrl = (
+  channelUrl: string,
+): Protobuf.Channel.Channel[] | null => {
+  try {
+    const channelsUrl = new URL(channelUrl);
+    if (
+      channelsUrl.hostname !== "meshtastic.org" ||
+      channelsUrl.pathname !== "/e/" ||
+      !channelsUrl.hash
+    ) {
+      return null;
+    }
+
+    const encodedChannelConfig = channelsUrl.hash.substring(1);
+    const paddedString = encodedChannelConfig
+      .padEnd(
+        encodedChannelConfig.length +
+          ((4 - (encodedChannelConfig.length % 4)) % 4),
+        "=",
+      )
+      .replace(/-/g, "+")
+      .replace(/_/g, "/");
+
+    const channelSet = fromBinary(
+      Protobuf.AppOnly.ChannelSetSchema,
+      toByteArray(paddedString),
+    );
+
+    return channelSet.settings.map((settings, index) =>
+      create(Protobuf.Channel.ChannelSchema, {
+        index,
+        role:
+          index === 0
+            ? Protobuf.Channel.Channel_Role.PRIMARY
+            : Protobuf.Channel.Channel_Role.SECONDARY,
+        settings,
+      }),
+    );
+  } catch {
+    return null;
+  }
+};
+
 const CLI_BASE64_KEYS = new Set(["psk", "publicKey", "privateKey", "adminKey"]);
 
 const normalizeCliEncodedBytesForExport = (value: unknown): unknown => {
@@ -278,14 +324,32 @@ const normalizeCliEncodedBytesForExport = (value: unknown): unknown => {
   return output;
 };
 
+const INT_DEG = 1e7;
+
+const toCoordinate = (value?: number) => {
+  if (typeof value !== "number") {
+    return 0;
+  }
+
+  return Math.abs(value) > 180 ? value / INT_DEG : value;
+};
+
 export const createConfigBackupYaml = ({
   channels,
   config,
   moduleConfig,
+  owner,
+  ownerShort,
+  location,
+  cannedMessages,
 }: {
   channels: Map<number, Protobuf.Channel.Channel>;
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
+  owner?: string;
+  ownerShort?: string;
+  location?: { latitudeI?: number; longitudeI?: number };
+  cannedMessages?: string | string[];
 }) => {
   const configJson = normalizeCliEncodedBytesForExport(
     toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config),
@@ -294,25 +358,24 @@ export const createConfigBackupYaml = ({
     toBackupJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig),
   ) as SerializableValue;
 
-  const channelList = Array.from(channels.values())
-    .sort((channelA, channelB) => channelA.index - channelB.index)
-    .map(
-      (channel) =>
-        normalizeCliEncodedBytesForExport(
-          sanitizeForExport(
-            toJson(Protobuf.Channel.ChannelSchema, channel, {
-              enumAsInteger: false,
-              useProtoFieldName: false,
-              emitDefaultValues: true,
-            }) as SerializableValue,
-          ),
-        ) as SerializableValue,
-    );
+  const cannedMessagesValue = Array.isArray(cannedMessages)
+    ? cannedMessages.join("|")
+    : (cannedMessages ?? "");
 
   const backup = {
+    canned_messages: cannedMessagesValue,
+    channel_url: createChannelShareUrl({
+      channels: channels as Map<Types.ChannelNumber, Protobuf.Channel.Channel>,
+      loraConfig: config.lora,
+    }),
     config: configJson,
+    location: {
+      lat: toCoordinate(location?.latitudeI),
+      lon: toCoordinate(location?.longitudeI),
+    },
     module_config: moduleConfigJson,
-    channels: channelList,
+    owner: owner ?? "",
+    owner_short: ownerShort ?? "",
   };
 
   return `# start of Meshtastic configure yaml\n${toYaml(backup)}\n`;
@@ -350,17 +413,26 @@ export const parseConfigBackupYaml = (
     errors.push("missingModuleConfig");
   }
 
-  if (!Array.isArray(parsed.channels)) {
+  const decodedChannels =
+    typeof parsed.channel_url === "string"
+      ? decodeChannelsFromChannelUrl(parsed.channel_url)
+      : null;
+
+  const rawChannels = Array.isArray(parsed.channels)
+    ? parsed.channels
+    : decodedChannels;
+
+  if (!Array.isArray(rawChannels)) {
     errors.push("missingChannels");
   } else if (
-    parsed.channels.some(
+    rawChannels.some(
       (channel) => !isObject(channel) || typeof channel.index !== "number",
     )
   ) {
     errors.push("invalidChannels");
   }
 
-  if (errors.length > 0) {
+  if (errors.length > 0 || !Array.isArray(rawChannels)) {
     return { errors };
   }
 
@@ -375,7 +447,7 @@ export const parseConfigBackupYaml = (
       normalizeCliEncodedValues(stripTypeNames(rawModuleConfig)),
       { ignoreUnknownFields: false },
     );
-    const channels = parsed.channels.map((channel) =>
+    const channels = rawChannels.map((channel) =>
       fromJson(Protobuf.Channel.ChannelSchema, normalizeCliEncodedValues(stripTypeNames(channel)), {
         ignoreUnknownFields: false,
       }),
