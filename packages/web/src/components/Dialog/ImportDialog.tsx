@@ -1,4 +1,4 @@
-import { create, fromBinary } from "@bufbuild/protobuf";
+import { create } from "@bufbuild/protobuf";
 import { Button } from "@components/UI/Button.tsx";
 import {
   Dialog,
@@ -20,9 +20,9 @@ import {
 } from "@components/UI/Select.tsx";
 import { Switch } from "@components/UI/Switch.tsx";
 import { useDevice } from "@core/stores";
+import { decodeMeshtasticChannelSetUrl } from "@core/utils/channelUrl.ts";
 import { deepCompareConfig } from "@core/utils/deepCompareConfig.ts";
 import { Protobuf } from "@meshtastic/core";
-import { toByteArray } from "base64-js";
 import { useEffect, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 
@@ -42,32 +42,8 @@ export const ImportDialog = ({ open, onOpenChange }: ImportDialogProps) => {
   const [importIndex, setImportIndex] = useState<number[]>([]);
 
   useEffect(() => {
-    // the channel information is contained in the URL's fragment, which will be present after a
-    // non-URL encoded `#`.
     try {
-      const channelsUrl = new URL(importDialogInput);
-      if (
-        (channelsUrl.hostname !== "meshtastic.org" &&
-          channelsUrl.pathname !== "/e/") ||
-        !channelsUrl.hash
-      ) {
-        throw t("import.error.invalidUrl");
-      }
-
-      const encodedChannelConfig = channelsUrl.hash.substring(1);
-      const paddedString = encodedChannelConfig
-        .padEnd(
-          encodedChannelConfig.length +
-            ((4 - (encodedChannelConfig.length % 4)) % 4),
-          "=",
-        )
-        .replace(/-/g, "+")
-        .replace(/_/g, "/");
-
-      const newChannelSet = fromBinary(
-        Protobuf.AppOnly.ChannelSetSchema,
-        toByteArray(paddedString),
-      );
+      const newChannelSet = decodeMeshtasticChannelSetUrl(importDialogInput);
 
       const newImportChannelArray = newChannelSet.settings.map((_, idx) => idx);
 
