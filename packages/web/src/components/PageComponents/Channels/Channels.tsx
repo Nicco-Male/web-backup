@@ -12,6 +12,7 @@ import { createConfigBackupYaml } from "@core/utils/configBackup.ts";
 import type { Protobuf } from "@meshtastic/core";
 import i18next from "i18next";
 import { DownloadIcon, QrCodeIcon, UploadIcon } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/UI/Tooltip.tsx";
 import { Suspense, useCallback, useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
@@ -99,14 +100,31 @@ export const Channels = ({ onFormInit }: ConfigProps) => {
           <UploadIcon className="mr-2" size={14} />
           {t("page.import")}
         </Button>
-        <Button className=" h-8" onClick={() => setDialogOpen("QR", true)}>
-          <QrCodeIcon className="mr-2" size={14} />
-          {t("page.export")}
-        </Button>
-        <Button className="h-8" onClick={downloadConfigBackup}>
-          <DownloadIcon className="mr-2" size={14} />
-          {t("page.backup")}
-        </Button>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button className=" h-8" onClick={() => setDialogOpen("QR", true)}>
+                <QrCodeIcon className="mr-2" size={14} />
+                {t("page.exportCli")}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t("page.exportCliDescription")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button className="h-8" onClick={downloadConfigBackup}>
+                <DownloadIcon className="mr-2" size={14} />
+                {t("page.exportWeb")}
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{t("page.exportWebDescription")}</TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+        <span className="text-xs text-muted-foreground pl-2">
+          {t("page.backupCompatibilityLabel")}
+        </span>
       </TabsList>
       {allChannels.map((channel) => (
         <TabsContent
