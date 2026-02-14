@@ -30,6 +30,20 @@ const CONTENT_SECURITY_POLICY =
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd());
+  const defaultAllowedHosts = [
+    "localhost",
+    "127.0.0.1",
+    "backmsh.niccomale.it",
+  ];
+  const allowedHosts = env.VITE_ALLOWED_HOSTS
+    ? Array.from(
+        new Set(
+          env.VITE_ALLOWED_HOSTS.split(",")
+            .map((host) => host.trim())
+            .filter(Boolean),
+        ),
+      )
+    : defaultAllowedHosts;
 
   const isProd = mode === "production";
   const isTest = env.VITE_IS_TEST;
@@ -80,7 +94,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 3000,
       strictPort: true,
-      allowedHosts: ["backmsh.niccomale.it"],
+      allowedHosts,
       headers: {
         "Content-Security-Policy": CONTENT_SECURITY_POLICY,
         "Cross-Origin-Opener-Policy": "same-origin",
