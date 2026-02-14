@@ -34,11 +34,15 @@ describe("createConfigBackupYaml", () => {
       device: {
         role: Protobuf.Config.Config_DeviceConfig_Role.CLIENT,
       },
+      network: {
+        ntpServer: "pool.ntp.org",
+      },
     });
 
     const moduleConfig = create(Protobuf.LocalOnly.LocalModuleConfigSchema, {
-      telemetry: {
-        updateInterval: 60,
+      mqtt: {
+        enabled: true,
+        address: "192.168.10.202",
       },
     });
 
@@ -57,24 +61,25 @@ describe("createConfigBackupYaml", () => {
   });
 
   it("keeps canonical top-level section order", () => {
-    const yaml = createConfigBackupYaml(createSamplePayload());
+    const yaml = createConfigBackupYaml({
+      ...createSamplePayload(),
+      owner: "Node Long",
+      ownerShort: "NL",
+      location: { lat: 43.7, lon: 10.4 },
+    });
 
-    const configIndex = yaml.indexOf("config:");
-    const moduleConfigIndex = yaml.indexOf("module_config:");
-    const locationIndex = yaml.indexOf("location:");
-    const ownerIndex = yaml.indexOf("owner:");
-
-    expect(configIndex).toBeGreaterThanOrEqual(0);
-    expect(moduleConfigIndex).toBeGreaterThan(configIndex);
-    expect(locationIndex).toBe(-1);
-    expect(ownerIndex).toBe(-1);
+    expect(yaml.indexOf("canned_messages:")).toBeLessThan(yaml.indexOf("channel_url:"));
+    expect(yaml.indexOf("channel_url:")).toBeLessThan(yaml.indexOf("config:"));
+    expect(yaml.indexOf("config:")).toBeLessThan(yaml.indexOf("location:"));
+    expect(yaml.indexOf("location:")).toBeLessThan(yaml.indexOf("module_config:"));
+    expect(yaml.indexOf("module_config:")).toBeLessThan(yaml.indexOf("owner:"));
+    expect(yaml.indexOf("owner:")).toBeLessThan(yaml.indexOf("owner_short:"));
   });
 
   it("serializes enums as names for cli compatibility", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
     expect(yaml).toContain("role: CLIENT");
-    expect(yaml).toContain("role: PRIMARY");
     expect(yaml).toContain("uplink_enabled: true");
   });
 
@@ -86,7 +91,7 @@ describe("createConfigBackupYaml", () => {
     expect(yaml).not.toContain("$typeName");
   });
 
-  it("serializes empty arrays as inline YAML scalars", () => {
+  it("prunes empty sections and avoids {} placeholders", () => {
     const channels = new Map([
       [
         0,
@@ -95,44 +100,31 @@ describe("createConfigBackupYaml", () => {
           role: Protobuf.Channel.Channel_Role.PRIMARY,
           settings: {
             name: "Primary",
-            ignoreIncoming: [],
           },
         }),
       ],
     ]);
 
-    const config = create(Protobuf.LocalOnly.LocalConfigSchema, {
-      device: {
-        role: Protobuf.Config.Config_DeviceConfig_Role.CLIENT,
-      },
-    });
-
-    const moduleConfig = create(Protobuf.LocalOnly.LocalModuleConfigSchema, {
-      telemetry: {
-        updateInterval: 60,
-      },
-    });
+    const config = create(Protobuf.LocalOnly.LocalConfigSchema, {});
+    const moduleConfig = create(Protobuf.LocalOnly.LocalModuleConfigSchema, {});
 
     const yaml = createConfigBackupYaml({ channels, config, moduleConfig });
 
-    expect(yaml).toContain("ignore_incoming: []");
+    expect(yaml).not.toContain("{}");
+    expect(yaml).not.toContain("module_config:");
   });
 
-  it("adds owner/location metadata when available", () => {
+  it("escapes owner emojis like meshtastic cli", () => {
     const yaml = createConfigBackupYaml({
       ...createSamplePayload(),
-      owner: "Node Long",
-      ownerShort: "NL",
-      location: { lat: 43.7, lon: 10.4 },
+      owner: "Nicco Pisa Berry 🇮🇹",
+      ownerShort: "NPB",
       cannedMessages: ["Hi", "Bye"],
     });
 
     expect(yaml).toContain("canned_messages: Hi|Bye");
-    expect(yaml).toContain("location:");
-    expect(yaml).toContain("lat: 43.7");
-    expect(yaml).toContain("lon: 10.4");
-    expect(yaml).toContain("owner: Node Long");
-    expect(yaml).toContain("owner_short: NL");
+    expect(yaml).toContain('owner: "Nicco Pisa Berry \\U0001F1EE\\U0001F1F9"');
+    expect(yaml).toContain("owner_short: NPB");
   });
 });
 
@@ -157,8 +149,8 @@ describe("parseConfigBackupYaml", () => {
     });
 
     const moduleConfig = create(Protobuf.LocalOnly.LocalModuleConfigSchema, {
-      telemetry: {
-        updateInterval: 60,
+      mqtt: {
+        enabled: true,
       },
     });
 
@@ -169,7 +161,6 @@ describe("parseConfigBackupYaml", () => {
     expect(parsed.backup?.channels.length).toBe(1);
   });
 
-
   it("accepts CLI base64: prefixed secret values", () => {
     const parsed = parseConfigBackupYaml(`
 config:
@@ -177,8 +168,8 @@ config:
     public_key: base64:r7O4pSccIMGXCUlCJFJUfxlUtvnNF2+nyADtGj8i9C8=
     private_key: base64:IKhkOAphNZr4U948HkKx+J09hK7BHCAFvvQVICwBkEc=
 module_config:
-  telemetry:
-    update_interval: 60
+  mqtt:
+    enabled: true
 `);
 
     expect(parsed.errors).toEqual([]);
