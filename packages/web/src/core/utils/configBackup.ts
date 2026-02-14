@@ -1,4 +1,4 @@
-import { fromByteArray } from "base64-js";
+import { toJson } from "@bufbuild/protobuf";
 import type { Protobuf } from "@meshtastic/core";
 
 type SerializableValue =
@@ -9,13 +9,14 @@ type SerializableValue =
   | SerializableValue[]
   | { [key: string]: SerializableValue };
 
+const isSerializableObject = (
+  value: SerializableValue,
+): value is { [key: string]: SerializableValue } =>
+  value !== null && !Array.isArray(value) && typeof value === "object";
+
 const sanitizeForExport = (value: unknown): SerializableValue => {
   if (value === null) {
     return null;
-  }
-
-  if (value instanceof Uint8Array) {
-    return fromByteArray(value);
   }
 
   if (value instanceof Date) {
@@ -119,6 +120,37 @@ const toYaml = (value: SerializableValue, indent = 0): string => {
   return `${prefix}${yamlScalar(value)}`;
 };
 
+const toCliJson = <TMessage>(schema: TMessage, message: unknown): SerializableValue =>
+  sanitizeForExport(
+    toJson(schema, message as never, {
+      enumAsInteger: false,
+      useProtoFieldName: true,
+      emitDefaultValues: false,
+    }),
+  );
+
+const pruneEmptyObjects = (value: SerializableValue): SerializableValue => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => pruneEmptyObjects(entry));
+  }
+
+  if (!isSerializableObject(value)) {
+    return value;
+  }
+
+  const prunedEntries = Object.entries(value).flatMap(([key, entryValue]) => {
+    const prunedValue = pruneEmptyObjects(entryValue);
+
+    if (isSerializableObject(prunedValue) && Object.keys(prunedValue).length === 0) {
+      return [];
+    }
+
+    return [[key, prunedValue] as const];
+  });
+
+  return Object.fromEntries(prunedEntries);
+};
+
 export const createConfigBackupYaml = ({
   channels,
   config,
@@ -128,18 +160,17 @@ export const createConfigBackupYaml = ({
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
 }) => {
-  const channelList = Array.from(channels.values()).sort(
-    (channelA, channelB) => channelA.index - channelB.index,
-  );
+  const channelList = Array.from(channels.values())
+    .sort((channelA, channelB) => channelA.index - channelB.index)
+    .map((channel) => toCliJson(Protobuf.Channel.ChannelSchema, channel));
 
   const backup = {
-    generatedAt: new Date().toISOString(),
-    format: "meshtastic-web-config-backup-v1",
-    config,
-    moduleConfig,
+    config: toCliJson(Protobuf.LocalOnly.LocalConfigSchema, config),
+    module_config: pruneEmptyObjects(
+      toCliJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig),
+    ),
     channels: channelList,
   };
 
-  const serialized = sanitizeForExport(backup);
-  return `${toYaml(serialized)}\n`;
+  return `${toYaml(backup)}\n`;
 };
