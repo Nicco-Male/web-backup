@@ -1,4 +1,8 @@
 import { fromJson, toJson } from "@bufbuild/protobuf";
+import {
+  channelSetToChannels,
+  decodeMeshtasticChannelSetUrl,
+} from "@core/utils/channelUrl.ts";
 import { Protobuf } from "@meshtastic/core";
 
 type SerializableValue =
@@ -13,6 +17,19 @@ export interface ConfigBackupPayload {
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
   channels: Protobuf.Channel.Channel[];
+}
+
+// Restore payload normalized for the app runtime.
+// Minimum accepted CLI restore input is: config + module_config (or moduleConfig).
+// Channels can be provided either as `channels[]` or `channel_url`.
+export type ConfigBackupRestorePayload = ConfigBackupPayload;
+
+interface ConfigBackupCliPayload extends Record<string, unknown> {
+  config?: unknown;
+  moduleConfig?: unknown;
+  module_config?: unknown;
+  channels?: unknown;
+  channel_url?: unknown;
 }
 
 export interface ConfigBackupValidationResult {
@@ -338,26 +355,36 @@ export const parseConfigBackupYaml = (
     return { errors: ["invalidFile"] };
   }
 
-  if (!isObject(parsed.config)) {
+  const cliPayload = parsed as ConfigBackupCliPayload;
+
+  if (!isObject(cliPayload.config)) {
     errors.push("missingConfig");
   }
 
-  const rawModuleConfig = isObject(parsed.moduleConfig)
-    ? parsed.moduleConfig
-    : parsed.module_config;
+  const rawModuleConfig = isObject(cliPayload.moduleConfig)
+    ? cliPayload.moduleConfig
+    : cliPayload.module_config;
 
   if (!isObject(rawModuleConfig)) {
     errors.push("missingModuleConfig");
   }
 
-  if (!Array.isArray(parsed.channels)) {
-    errors.push("missingChannels");
+  const hasChannels = cliPayload.channels !== undefined;
+  const hasChannelUrl = cliPayload.channel_url !== undefined;
+
+  if (hasChannels && !Array.isArray(cliPayload.channels)) {
+    errors.push("invalidChannels");
   } else if (
-    parsed.channels.some(
+    Array.isArray(cliPayload.channels) &&
+    cliPayload.channels.some(
       (channel) => !isObject(channel) || typeof channel.index !== "number",
     )
   ) {
     errors.push("invalidChannels");
+  }
+
+  if (hasChannelUrl && typeof cliPayload.channel_url !== "string") {
+    errors.push("invalidFile");
   }
 
   if (errors.length > 0) {
@@ -367,7 +394,7 @@ export const parseConfigBackupYaml = (
   try {
     const config = fromJson(
       Protobuf.LocalOnly.LocalConfigSchema,
-      normalizeCliEncodedValues(stripTypeNames(parsed.config)),
+      normalizeCliEncodedValues(stripTypeNames(cliPayload.config)),
       { ignoreUnknownFields: false },
     );
     const moduleConfig = fromJson(
@@ -375,11 +402,19 @@ export const parseConfigBackupYaml = (
       normalizeCliEncodedValues(stripTypeNames(rawModuleConfig)),
       { ignoreUnknownFields: false },
     );
-    const channels = parsed.channels.map((channel) =>
-      fromJson(Protobuf.Channel.ChannelSchema, normalizeCliEncodedValues(stripTypeNames(channel)), {
-        ignoreUnknownFields: false,
-      }),
-    );
+    const channels = Array.isArray(cliPayload.channels)
+      ? cliPayload.channels.map((channel) =>
+          fromJson(
+            Protobuf.Channel.ChannelSchema,
+            normalizeCliEncodedValues(stripTypeNames(channel)),
+            {
+              ignoreUnknownFields: false,
+            },
+          ),
+        )
+      : typeof cliPayload.channel_url === "string"
+        ? channelSetToChannels(decodeMeshtasticChannelSetUrl(cliPayload.channel_url))
+        : [];
 
     return {
       errors: [],

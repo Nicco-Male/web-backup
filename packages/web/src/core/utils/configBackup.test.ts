@@ -1,5 +1,6 @@
-import { create } from "@bufbuild/protobuf";
+import { create, toBinary } from "@bufbuild/protobuf";
 import { Protobuf } from "@meshtastic/core";
+import { fromByteArray } from "base64-js";
 import { describe, expect, it } from "vitest";
 import { createConfigBackupYaml, parseConfigBackupYaml } from "./configBackup.ts";
 
@@ -163,5 +164,51 @@ channels:
 
     expect(parsed.errors).toEqual([]);
     expect(parsed.backup?.channels[0]?.index).toBe(0);
+  });
+
+  it("accepts restore yaml without channels", () => {
+    const parsed = parseConfigBackupYaml(`
+config:
+  device:
+    role: CLIENT
+module_config:
+  telemetry:
+    update_interval: 60
+`);
+
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.backup?.channels).toEqual([]);
+  });
+
+  it("maps channel_url to internal channel payload", () => {
+    const channelSet = create(Protobuf.AppOnly.ChannelSetSchema, {
+      settings: [
+        create(Protobuf.Channel.ChannelSettingsSchema, {
+          name: "Primary",
+        }),
+        create(Protobuf.Channel.ChannelSettingsSchema, {
+          name: "Secondary",
+        }),
+      ],
+    });
+    const encoded = fromByteArray(toBinary(Protobuf.AppOnly.ChannelSetSchema, channelSet))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/g, "");
+
+    const parsed = parseConfigBackupYaml(`
+config:
+  device:
+    role: CLIENT
+module_config:
+  telemetry:
+    update_interval: 60
+channel_url: https://meshtastic.org/e/#${encoded}
+`);
+
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.backup?.channels).toHaveLength(2);
+    expect(parsed.backup?.channels[0]?.role).toBe(Protobuf.Channel.Channel_Role.PRIMARY);
+    expect(parsed.backup?.channels[1]?.index).toBe(1);
   });
 });
