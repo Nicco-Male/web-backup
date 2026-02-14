@@ -17,6 +17,19 @@ export interface ConfigBackupPayload {
   channels: Protobuf.Channel.Channel[];
 }
 
+// Restore payload normalized for the app runtime.
+// Minimum accepted CLI restore input is: config + module_config (or moduleConfig).
+// Channels can be provided either as `channels[]` or `channel_url`.
+export type ConfigBackupRestorePayload = ConfigBackupPayload;
+
+interface ConfigBackupCliPayload extends Record<string, unknown> {
+  config?: unknown;
+  moduleConfig?: unknown;
+  module_config?: unknown;
+  channels?: unknown;
+  channel_url?: unknown;
+}
+
 export interface ConfigBackupValidationResult {
   backup?: ConfigBackupPayload;
   errors: string[];
@@ -378,7 +391,9 @@ export const createConfigBackupYaml = ({
     owner_short: ownerShort ?? "",
   };
 
-  return `# start of Meshtastic configure yaml\n${toYaml(backup)}\n`;
+  return `# start of Meshtastic configure yaml\n${stringify(backup, {
+    indent: 2,
+  })}`;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
@@ -392,7 +407,7 @@ export const parseConfigBackupYaml = (
 
   let parsed: unknown;
   try {
-    parsed = parseYamlSubset(source);
+    parsed = parse(source);
   } catch {
     return { errors: ["invalidFile"] };
   }
@@ -401,13 +416,15 @@ export const parseConfigBackupYaml = (
     return { errors: ["invalidFile"] };
   }
 
-  if (!isObject(parsed.config)) {
+  const cliPayload = parsed as ConfigBackupCliPayload;
+
+  if (!isObject(cliPayload.config)) {
     errors.push("missingConfig");
   }
 
-  const rawModuleConfig = isObject(parsed.moduleConfig)
-    ? parsed.moduleConfig
-    : parsed.module_config;
+  const rawModuleConfig = isObject(cliPayload.moduleConfig)
+    ? cliPayload.moduleConfig
+    : cliPayload.module_config;
 
   if (!isObject(rawModuleConfig)) {
     errors.push("missingModuleConfig");
@@ -439,7 +456,7 @@ export const parseConfigBackupYaml = (
   try {
     const config = fromJson(
       Protobuf.LocalOnly.LocalConfigSchema,
-      normalizeCliEncodedValues(stripTypeNames(parsed.config)),
+      normalizeCliEncodedValues(stripTypeNames(cliPayload.config)),
       { ignoreUnknownFields: false },
     );
     const moduleConfig = fromJson(
