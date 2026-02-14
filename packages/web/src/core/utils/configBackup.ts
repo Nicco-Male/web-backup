@@ -74,13 +74,29 @@ const sanitizeForExport = (value: unknown): SerializableValue => {
 
 const quoteScalar = (value: string) => JSON.stringify(value);
 
+const isPlainYamlString = (value: string): boolean => {
+  if (!value.length || value !== value.trim()) {
+    return false;
+  }
+
+  if (value === "true" || value === "false" || value === "null") {
+    return false;
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(value)) {
+    return false;
+  }
+
+  return !/[:\[\]{}#,]|^[-?!&*%@`|>]/.test(value);
+};
+
 const yamlScalar = (value: SerializableValue): string => {
   if (value === null) {
     return "null";
   }
 
   if (typeof value === "string") {
-    return quoteScalar(value);
+    return isPlainYamlString(value) ? value : quoteScalar(value);
   }
 
   return String(value);
@@ -237,6 +253,31 @@ const parseYamlSubset = (source: string): unknown => {
   return parseAtIndent(0);
 };
 
+const CLI_BASE64_KEYS = new Set(["psk", "publicKey", "privateKey", "adminKey"]);
+
+const normalizeCliEncodedBytesForExport = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeCliEncodedBytesForExport(entry));
+  }
+
+  if (!isObject(value)) {
+    return value;
+  }
+
+  const output: Record<string, unknown> = {};
+
+  Object.entries(value).forEach(([key, entryValue]) => {
+    if (typeof entryValue === "string" && CLI_BASE64_KEYS.has(key)) {
+      output[key] = `base64:${entryValue}`;
+      return;
+    }
+
+    output[key] = normalizeCliEncodedBytesForExport(entryValue);
+  });
+
+  return output;
+};
+
 export const createConfigBackupYaml = ({
   channels,
   config,
@@ -246,22 +287,25 @@ export const createConfigBackupYaml = ({
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
 }) => {
-  const configJson = toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config);
-  const moduleConfigJson = toBackupJson(
-    Protobuf.LocalOnly.LocalModuleConfigSchema,
-    moduleConfig,
-  );
+  const configJson = normalizeCliEncodedBytesForExport(
+    toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config),
+  ) as SerializableValue;
+  const moduleConfigJson = normalizeCliEncodedBytesForExport(
+    toBackupJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig),
+  ) as SerializableValue;
 
   const channelList = Array.from(channels.values())
     .sort((channelA, channelB) => channelA.index - channelB.index)
     .map(
       (channel) =>
-        sanitizeForExport(
-          toJson(Protobuf.Channel.ChannelSchema, channel, {
-            enumAsInteger: false,
-            useProtoFieldName: false,
-            emitDefaultValues: true,
-          }) as SerializableValue,
+        normalizeCliEncodedBytesForExport(
+          sanitizeForExport(
+            toJson(Protobuf.Channel.ChannelSchema, channel, {
+              enumAsInteger: false,
+              useProtoFieldName: false,
+              emitDefaultValues: true,
+            }) as SerializableValue,
+          ),
         ) as SerializableValue,
     );
 

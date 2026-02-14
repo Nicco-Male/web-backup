@@ -70,15 +70,15 @@ describe("createConfigBackupYaml", () => {
   it("serializes enums as names for cli compatibility", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
-    expect(yaml).toContain('role: "CLIENT"');
-    expect(yaml).toContain('role: "PRIMARY"');
+    expect(yaml).toContain("role: CLIENT");
+    expect(yaml).toContain("role: PRIMARY");
     expect(yaml).toContain("uplink_enabled: true");
   });
 
   it("uses CLI-compatible base64 encoding for bytes", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
-    expect(yaml).toContain('psk: "AQID"');
+    expect(yaml).toContain('psk: "base64:AQID"');
     expect(yaml).not.toContain(": undefined");
     expect(yaml).not.toContain("$typeName");
   });
