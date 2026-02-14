@@ -338,6 +338,38 @@ const parseYamlSubset = (source: string): unknown => {
 
 const CLI_BASE64_KEYS = new Set(["psk", "publicKey", "privateKey", "adminKey"]);
 
+const ensureBase64Prefix = (value: string): string => {
+  return value.startsWith("base64:") ? value : `base64:${value}`;
+};
+
+const securityBlockCLI = (security: Record<string, unknown> | undefined): string => {
+  const adminEntries = Array.isArray(security?.adminKey)
+    ? security.adminKey.filter((entry): entry is string => typeof entry === "string")
+    : [];
+
+  const adminKey0 = adminEntries[0] ? ensureBase64Prefix(adminEntries[0]) : "base64:";
+  const privateKey =
+    typeof security?.privateKey === "string"
+      ? ensureBase64Prefix(security.privateKey)
+      : "base64:";
+  const publicKey =
+    typeof security?.publicKey === "string"
+      ? ensureBase64Prefix(security.publicKey)
+      : "base64:";
+  const serialEnabled = security?.serialEnabled === true ? "true" : "false";
+
+  return [
+    "  security:",
+    "    adminKey:",
+    `    - ${adminKey0}`,
+    "    - 'base64:'",
+    "    - 'base64:'",
+    `    privateKey: ${privateKey}`,
+    `    publicKey: ${publicKey}`,
+    `    serialEnabled: ${serialEnabled}`,
+  ].join("\n");
+};
+
 const normalizeCliEncodedBytesForExport = (value: unknown): unknown => {
   if (Array.isArray(value)) {
     return value.map((entry) => normalizeCliEncodedBytesForExport(entry));
@@ -543,6 +575,12 @@ ${toYaml(backup ?? {})}
 
   yaml = yaml.replace(/^canned_messages: "(.*)"$/m, "canned_messages: $1");
   yaml = yaml.replace(/^channel_url: "(https:\/\/.*)"$/m, "channel_url: $1");
+
+  const securityData = isObject(configJson.security) ? configJson.security : undefined;
+  yaml = yaml.replace(
+    /^  security:\n[\s\S]*?(?=^[^ \n])/m,
+    `${securityBlockCLI(securityData)}\n`,
+  );
 
   return yaml;
 };
