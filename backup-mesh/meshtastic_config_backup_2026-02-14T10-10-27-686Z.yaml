@@ -1,0 +1,355 @@
+generatedAt: "2026-02-14T10:10:27.685Z"
+format: "meshtastic-web-config-backup-v1"
+config:
+  $typeName: "meshtastic.LocalConfig"
+  version: 0
+  device:
+    $typeName: "meshtastic.Config.DeviceConfig"
+    role: 12
+    serialEnabled: false
+    buttonGpio: 0
+    buzzerGpio: 0
+    rebroadcastMode: 0
+    nodeInfoBroadcastSecs: 14400
+    doubleTapAsButtonPress: false
+    isManaged: false
+    disableTripleClick: true
+    tzdef: "CET-1CEST,M3.5.0/2:00:00,M10.4.0/3:00:00"
+    ledHeartbeatDisabled: false
+    buzzerMode: 0
+  position:
+    $typeName: "meshtastic.Config.PositionConfig"
+    positionBroadcastSecs: 3600
+    positionBroadcastSmartEnabled: true
+    fixedPosition: true
+    gpsEnabled: false
+    gpsUpdateInterval: 120
+    gpsAttemptTime: 0
+    positionFlags: 2
+    rxGpio: 0
+    txGpio: 0
+    broadcastSmartMinimumDistance: 100
+    broadcastSmartMinimumIntervalSecs: 30
+    gpsEnGpio: 0
+    gpsMode: 0
+  power:
+    $typeName: "meshtastic.Config.PowerConfig"
+    isPowerSaving: false
+    onBatteryShutdownAfterSecs: 0
+    adcMultiplierOverride: 0
+    waitBluetoothSecs: 60
+    sdsSecs: 4294967295
+    lsSecs: 300
+    minWakeSecs: 10
+    deviceBatteryInaAddress: 0
+    powermonEnables: "0"
+  network:
+    $typeName: "meshtastic.Config.NetworkConfig"
+    wifiEnabled: false
+    wifiSsid: ""
+    wifiPsk: ""
+    ntpServer: "meshtastic.pool.ntp.org"
+    ethEnabled: false
+    addressMode: 0
+    rsyslogServer: ""
+    enabledProtocols: 1
+    ipv6Enabled: false
+  display:
+    $typeName: "meshtastic.Config.DisplayConfig"
+    screenOnSecs: 600
+    gpsFormat: 0
+    autoScreenCarouselSecs: 0
+    compassNorthTop: false
+    flipScreen: false
+    units: 0
+    oled: 0
+    displaymode: 0
+    headingBold: false
+    wakeOnTapOrMotion: false
+    compassOrientation: 0
+    use12hClock: false
+    useLongNodeName: false
+    enableMessageBubbles: false
+  lora:
+    $typeName: "meshtastic.Config.LoRaConfig"
+    usePreset: true
+    modemPreset: 4
+    bandwidth: 250
+    spreadFactor: 11
+    codingRate: 5
+    frequencyOffset: 0
+    region: 3
+    hopLimit: 5
+    txEnabled: true
+    txPower: 22
+    channelNum: 0
+    overrideDutyCycle: false
+    sx126xRxBoostedGain: true
+    overrideFrequency: 0
+    paFanDisabled: false
+    ignoreIncoming:
+[]
+    ignoreMqtt: true
+    configOkToMqtt: false
+  bluetooth:
+    $typeName: "meshtastic.Config.BluetoothConfig"
+    enabled: true
+    mode: 1
+    fixedPin: 123456
+  security:
+    $typeName: "meshtastic.Config.SecurityConfig"
+    publicKey: "r7O4pSccIMGXCUlCJFJUfxlUtvnNF2+nyADtGj8i9C8="
+    privateKey: "IKhkOAphNZr4U948HkKx+J09hK7BHCAFvvQVICwBkEc="
+    adminKey:
+      - "6i5Imo6PwzKOmd0O5x2he3Oo1yeFVkL0czq+TRtwJm0="
+      - ""
+      - ""
+    isManaged: false
+    serialEnabled: true
+    debugLogApiEnabled: false
+    adminChannelEnabled: false
+moduleConfig:
+  $typeName: "meshtastic.LocalModuleConfig"
+  version: 0
+  mqtt:
+    $typeName: "meshtastic.ModuleConfig.MQTTConfig"
+    enabled: true
+    address: "192.168.10.202"
+    username: "SmPisa"
+    password: "SmPisa31"
+    encryptionEnabled: false
+    jsonEnabled: true
+    tlsEnabled: false
+    root: "msh/EU_868/IT/Tuscany/Pisa"
+    proxyToClientEnabled: false
+    mapReportingEnabled: true
+    mapReportSettings:
+      $typeName: "meshtastic.ModuleConfig.MapReportSettings"
+      publishIntervalSecs: 14400
+      positionPrecision: 14
+      shouldReportLocation: false
+  serial:
+    $typeName: "meshtastic.ModuleConfig.SerialConfig"
+    enabled: false
+    echo: false
+    rxd: 0
+    txd: 0
+    baud: 0
+    timeout: 0
+    mode: 0
+    overrideConsoleSerialPort: false
+  externalNotification:
+    $typeName: "meshtastic.ModuleConfig.ExternalNotificationConfig"
+    enabled: false
+    outputMs: 0
+    output: 0
+    outputVibra: 0
+    outputBuzzer: 0
+    active: false
+    alertMessage: false
+    alertMessageVibra: false
+    alertMessageBuzzer: false
+    alertBell: false
+    alertBellVibra: false
+    alertBellBuzzer: false
+    usePwm: false
+    nagTimeout: 0
+    useI2sAsBuzzer: false
+  storeForward:
+    $typeName: "meshtastic.ModuleConfig.StoreForwardConfig"
+    enabled: true
+    heartbeat: true
+    records: 100
+    historyReturnMax: 100
+    historyReturnWindow: 100
+    isServer: true
+  rangeTest:
+    $typeName: "meshtastic.ModuleConfig.RangeTestConfig"
+    enabled: false
+    sender: 0
+    save: false
+    clearOnReboot: false
+  telemetry:
+    $typeName: "meshtastic.ModuleConfig.TelemetryConfig"
+    deviceUpdateInterval: 0
+    environmentUpdateInterval: 0
+    environmentMeasurementEnabled: false
+    environmentScreenEnabled: false
+    environmentDisplayFahrenheit: false
+    airQualityEnabled: false
+    airQualityInterval: 0
+    powerMeasurementEnabled: false
+    powerUpdateInterval: 0
+    powerScreenEnabled: false
+    healthMeasurementEnabled: false
+    healthUpdateInterval: 0
+    healthScreenEnabled: false
+    deviceTelemetryEnabled: false
+    airQualityScreenEnabled: false
+  cannedMessage:
+    $typeName: "meshtastic.ModuleConfig.CannedMessageConfig"
+    rotary1Enabled: false
+    inputbrokerPinA: 0
+    inputbrokerPinB: 0
+    inputbrokerPinPress: 0
+    inputbrokerEventCw: 0
+    inputbrokerEventCcw: 0
+    inputbrokerEventPress: 0
+    updown1Enabled: false
+    enabled: true
+    allowInputSource: ""
+    sendBell: false
+  audio:
+    $typeName: "meshtastic.ModuleConfig.AudioConfig"
+    codec2Enabled: false
+    pttPin: 0
+    bitrate: 0
+    i2sWs: 0
+    i2sSd: 0
+    i2sDin: 0
+    i2sSck: 0
+  neighborInfo:
+    $typeName: "meshtastic.ModuleConfig.NeighborInfoConfig"
+    enabled: false
+    updateInterval: 14400
+    transmitOverLora: false
+  ambientLighting:
+    $typeName: "meshtastic.ModuleConfig.AmbientLightingConfig"
+    ledState: false
+    current: 10
+    red: 32
+    green: 184
+    blue: 173
+  detectionSensor:
+    $typeName: "meshtastic.ModuleConfig.DetectionSensorConfig"
+    enabled: false
+    minimumBroadcastSecs: 45
+    stateBroadcastSecs: 0
+    sendBell: false
+    name: ""
+    monitorPin: 0
+    detectionTriggerType: 1
+    usePullup: false
+  paxcounter:
+    $typeName: "meshtastic.ModuleConfig.PaxcounterConfig"
+    enabled: false
+    paxcounterUpdateInterval: 0
+    wifiThreshold: 0
+    bleThreshold: 0
+channels:
+  -
+    $typeName: "meshtastic.Channel"
+    index: 0
+    role: 1
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: "AQ=="
+      name: ""
+      id: 0
+      uplinkEnabled: true
+      downlinkEnabled: false
+      moduleSettings:
+        $typeName: "meshtastic.ModuleSettings"
+        positionPrecision: 32
+        isMuted: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 1
+    role: 2
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: "WmsEnBJTbeqFOTgi79ekIu+dCpqY/ts9SEgXz/yB8y4="
+      name: "Pisa"
+      id: 1
+      uplinkEnabled: true
+      downlinkEnabled: false
+      moduleSettings:
+        $typeName: "meshtastic.ModuleSettings"
+        positionPrecision: 32
+        isMuted: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 2
+    role: 2
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: "QNNXS5NRjA5hmGZIFFaBRp9Vx1+l8R5Rm1RBE2mZ4X4="
+      name: "Poggi"
+      id: 2
+      uplinkEnabled: true
+      downlinkEnabled: false
+      moduleSettings:
+        $typeName: "meshtastic.ModuleSettings"
+        positionPrecision: 32
+        isMuted: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 3
+    role: 2
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: "FVNtESlvjcper4TmMzt4BuL9u8hWj4lrTvCskQqOoHk="
+      name: "Toscana"
+      id: 3
+      uplinkEnabled: true
+      downlinkEnabled: false
+      moduleSettings:
+        $typeName: "meshtastic.ModuleSettings"
+        positionPrecision: 32
+        isMuted: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 4
+    role: 2
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: "n6vDXdhRyrioYOC5pfdjxMKyg9EtYH7/M3pHzPhpi5Q="
+      name: "ToscoLig"
+      id: 0
+      uplinkEnabled: true
+      downlinkEnabled: false
+      moduleSettings:
+        $typeName: "meshtastic.ModuleSettings"
+        positionPrecision: 32
+        isMuted: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 5
+    role: 0
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: ""
+      name: ""
+      id: 0
+      uplinkEnabled: false
+      downlinkEnabled: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 6
+    role: 0
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: ""
+      name: ""
+      id: 0
+      uplinkEnabled: false
+      downlinkEnabled: false
+  -
+    $typeName: "meshtastic.Channel"
+    index: 7
+    role: 0
+    settings:
+      $typeName: "meshtastic.ChannelSettings"
+      channelNum: 0
+      psk: ""
+      name: ""
+      id: 0
+      uplinkEnabled: false
+      downlinkEnabled: false
