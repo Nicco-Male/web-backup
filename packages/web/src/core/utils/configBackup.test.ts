@@ -1,5 +1,4 @@
 import { create } from "@bufbuild/protobuf";
-import { readFileSync } from "node:fs";
 import { Protobuf } from "@meshtastic/core";
 import { describe, expect, it } from "vitest";
 import { createConfigBackupYaml, parseConfigBackupYaml } from "./configBackup.ts";
@@ -46,21 +45,20 @@ describe("createConfigBackupYaml", () => {
     return { channels, config, moduleConfig };
   };
 
-  it("matches a CLI-style golden export", () => {
+  it("matches the meshtastic web backup envelope format", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
-    const goldenYaml = readFileSync(
-      new URL("./__fixtures__/meshtastic-cli-export.golden.yaml", import.meta.url),
-      "utf8",
-    );
-
-    expect(yaml).toBe(goldenYaml);
+    expect(yaml).toContain('generatedAt: "');
+    expect(yaml).toContain('format: "meshtastic-web-config-backup-v1"');
+    expect(yaml).toContain('moduleConfig:');
+    expect(yaml).toContain('$typeName: "meshtastic.LocalConfig"');
+    expect(yaml).toContain('$typeName: "meshtastic.LocalModuleConfig"');
   });
 
   it("keeps canonical top-level section order", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
     const configIndex = yaml.indexOf("config:");
-    const moduleConfigIndex = yaml.indexOf("module_config:");
+    const moduleConfigIndex = yaml.indexOf("moduleConfig:");
     const channelsIndex = yaml.indexOf("channels:");
 
     expect(configIndex).toBeGreaterThanOrEqual(0);
@@ -68,15 +66,14 @@ describe("createConfigBackupYaml", () => {
     expect(channelsIndex).toBeGreaterThan(moduleConfigIndex);
   });
 
-  it("serializes enums/booleans and keeps pure CLI structure", () => {
+  it("serializes enums as numbers and keeps metadata fields", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
-    expect(yaml).toContain("role: \"CLIENT\"");
-    expect(yaml).toContain("role: \"PRIMARY\"");
+    expect(yaml).toContain("role: 12");
+    expect(yaml).toContain("role: 1");
     expect(yaml).toContain("uplink_enabled: true");
-    expect(yaml).not.toContain("meshtastic-web-config-backup-v1");
-    expect(yaml).not.toContain("generatedAt");
-    expect(yaml).not.toContain("format:");
+    expect(yaml).toContain("generatedAt");
+    expect(yaml).toContain("format:");
   });
 
   it("uses CLI-compatible base64 encoding for bytes and no JSON null sentinels", () => {

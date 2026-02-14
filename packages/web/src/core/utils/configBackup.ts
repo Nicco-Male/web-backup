@@ -239,8 +239,8 @@ export const createConfigBackupYaml = ({
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
 }) => {
-  const configJson = toCliJson(Protobuf.LocalOnly.LocalConfigSchema, config);
-  const moduleConfigJson = toCliJson(
+  const configJson = toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config);
+  const moduleConfigJson = toBackupJson(
     Protobuf.LocalOnly.LocalModuleConfigSchema,
     moduleConfig,
   );
@@ -248,15 +248,21 @@ export const createConfigBackupYaml = ({
   const channelList = Array.from(channels.values())
     .sort((channelA, channelB) => channelA.index - channelB.index)
     .map((channel) =>
-      toJson(Protobuf.Channel.ChannelSchema, channel, {
-        enumAsInteger: false,
-        useProtoFieldName: true,
-      }),
+      addTypeNames(
+        toJson(Protobuf.Channel.ChannelSchema, channel, {
+          enumAsInteger: true,
+          useProtoFieldName: false,
+          emitDefaultValues: true,
+        }) as SerializableValue,
+        channel,
+      ),
     );
 
   const backup = {
+    generatedAt: new Date().toISOString(),
+    format: "meshtastic-web-config-backup-v1",
     config: configJson,
-    module_config: moduleConfigJson,
+    moduleConfig: moduleConfigJson,
     channels: channelList,
   };
 
@@ -287,7 +293,11 @@ export const parseConfigBackupYaml = (
     errors.push("missingConfig");
   }
 
-  if (!isObject(parsed.module_config)) {
+  const rawModuleConfig = isObject(parsed.moduleConfig)
+    ? parsed.moduleConfig
+    : parsed.module_config;
+
+  if (!isObject(rawModuleConfig)) {
     errors.push("missingModuleConfig");
   }
 
@@ -308,16 +318,16 @@ export const parseConfigBackupYaml = (
   try {
     const config = fromJson(
       Protobuf.LocalOnly.LocalConfigSchema,
-      parsed.config,
+      stripTypeNames(parsed.config),
       { ignoreUnknownFields: false },
     );
     const moduleConfig = fromJson(
       Protobuf.LocalOnly.LocalModuleConfigSchema,
-      parsed.module_config,
+      stripTypeNames(rawModuleConfig),
       { ignoreUnknownFields: false },
     );
     const channels = parsed.channels.map((channel) =>
-      fromJson(Protobuf.Channel.ChannelSchema, channel, {
+      fromJson(Protobuf.Channel.ChannelSchema, stripTypeNames(channel), {
         ignoreUnknownFields: false,
       }),
     );
@@ -335,12 +345,62 @@ export const parseConfigBackupYaml = (
   }
 };
 
-const toCliJson = <T>(schema: Parameters<typeof toJson>[0], message: T) => {
-  return sanitizeForExport(
-    toJson(schema, message, {
-      useProtoFieldName: true,
-      emitDefaultValues: false,
-      enumAsInteger: false,
-    }) as unknown,
+const stripTypeNames = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => stripTypeNames(entry));
+  }
+
+  if (!isObject(value)) {
+    return value;
+  }
+
+  const output: Record<string, unknown> = {};
+  Object.entries(value).forEach(([key, entryValue]) => {
+    if (key === "$typeName") {
+      return;
+    }
+
+    output[key] = stripTypeNames(entryValue);
+  });
+  return output;
+};
+
+const addTypeNames = (jsonValue: SerializableValue, messageValue: unknown) => {
+  if (Array.isArray(jsonValue)) {
+    const sourceArray = Array.isArray(messageValue) ? messageValue : [];
+    return jsonValue.map((entry, index) => addTypeNames(entry, sourceArray[index]));
+  }
+
+  if (jsonValue === null || typeof jsonValue !== "object") {
+    return jsonValue;
+  }
+
+  const sourceObject =
+    messageValue !== null && typeof messageValue === "object"
+      ? (messageValue as Record<string, unknown>)
+      : undefined;
+
+  const output: Record<string, SerializableValue> = {};
+  if (typeof sourceObject?.$typeName === "string") {
+    output.$typeName = sourceObject.$typeName;
+  }
+
+  Object.entries(jsonValue).forEach(([key, entryValue]) => {
+    output[key] = addTypeNames(entryValue, sourceObject?.[key]);
+  });
+
+  return output;
+};
+
+const toBackupJson = <T>(schema: Parameters<typeof toJson>[0], message: T) => {
+  return addTypeNames(
+    sanitizeForExport(
+      toJson(schema, message, {
+        useProtoFieldName: false,
+        emitDefaultValues: true,
+        enumAsInteger: true,
+      }) as unknown,
+    ),
+    message,
   );
 };
