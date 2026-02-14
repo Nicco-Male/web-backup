@@ -1,4 +1,4 @@
-import { fromByteArray } from "base64-js";
+import { toJson } from "@bufbuild/protobuf";
 import type { Protobuf } from "@meshtastic/core";
 
 type SerializableValue =
@@ -27,10 +27,6 @@ export interface ConfigBackupValidationResult {
 const sanitizeForExport = (value: unknown): SerializableValue => {
   if (value === null) {
     return null;
-  }
-
-  if (value instanceof Uint8Array) {
-    return fromByteArray(value);
   }
 
   if (value instanceof Date) {
@@ -247,9 +243,9 @@ export const createConfigBackupYaml = ({
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
 }) => {
-  const channelList = Array.from(channels.values()).sort(
-    (channelA, channelB) => channelA.index - channelB.index,
-  );
+  const channelList = Array.from(channels.values())
+    .sort((channelA, channelB) => channelA.index - channelB.index)
+    .map((channel) => toCliJson(Protobuf.Channel.ChannelSchema, channel));
 
   const backup = {
     generatedAt: new Date().toISOString(),
@@ -259,8 +255,7 @@ export const createConfigBackupYaml = ({
     channels: channelList,
   };
 
-  const serialized = sanitizeForExport(backup);
-  return `${toYaml(serialized)}\n`;
+  return `${toYaml(backup)}\n`;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => {

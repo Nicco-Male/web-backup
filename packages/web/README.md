@@ -78,6 +78,35 @@ If you encounter any issues with nightly builds, please report them in our
 [issues tracker](https://github.com/meshtastic/web/issues). Your feedback helps
 improve the stability of future releases
 
+
+## Backup formats and compatibility
+
+The product keeps **two explicit backup/export formats**:
+
+1. **Export standard CLI** (URL/QR channel-set format)
+   - Compatibility level: **CLI compatible** and importable in Meshtastic Web via **Channels → Import**.
+2. **Export Web complete** (YAML full-config format)
+   - Compatibility level: **Web internal** (full device configuration backup for Web-oriented recovery and audit workflows).
+
+### Restore examples
+
+#### 1) Restore a Standard CLI export (URL/QR)
+
+1. Open Meshtastic Web and connect to the target node.
+2. Go to **Channels** → **Import**.
+3. Paste the `https://meshtastic.org/e/#...` URL from your CLI-standard export (or decode a QR containing the same URL).
+4. Map imported channels to target channel slots and apply.
+
+#### 2) Restore from a Web complete backup (YAML)
+
+1. Keep the generated `meshtastic_config_backup_*.yaml` file as the authoritative full backup artifact.
+2. Use it in your Web internal recovery flow to re-apply `config`, `moduleConfig`, and `channels` to a replacement/reset node.
+3. Verify the target node configuration after re-apply and keep the backup file versioned with date/time metadata.
+
+> Notes
+> - Standard CLI export is the interoperability format for sharing/importing channel sets.
+> - Web complete export is intentionally richer and Web-oriented, and is not positioned as a strict CLI interchange format.
+
 ## Development & Building
 
 You'll need to download the package manager used with this repo. You can install

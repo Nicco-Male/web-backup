@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import { readFileSync } from "node:fs";
 import { Protobuf } from "@meshtastic/core";
 import { describe, expect, it } from "vitest";
 import {
@@ -8,12 +9,13 @@ import {
 } from "./configBackup.ts";
 
 describe("createConfigBackupYaml", () => {
-  it("serializes config, module config, and channels as yaml", () => {
+  const createSamplePayload = () => {
     const channels = new Map([
       [
         1,
         create(Protobuf.Channel.ChannelSchema, {
           index: 1,
+          role: Protobuf.Channel.Channel_Role.SECONDARY,
           settings: {
             name: "Second",
             psk: new Uint8Array([1, 2, 3]),
@@ -24,8 +26,10 @@ describe("createConfigBackupYaml", () => {
         0,
         create(Protobuf.Channel.ChannelSchema, {
           index: 0,
+          role: Protobuf.Channel.Channel_Role.PRIMARY,
           settings: {
             name: "Primary",
+            uplinkEnabled: true,
           },
         }),
       ],
@@ -43,13 +47,47 @@ describe("createConfigBackupYaml", () => {
       },
     });
 
-    const yaml = createConfigBackupYaml({ channels, config, moduleConfig });
+    return { channels, config, moduleConfig };
+  };
 
-    expect(yaml).toContain('format: "meshtastic-web-config-backup-v1"');
-    expect(yaml).toContain("channels:");
-    expect(yaml).toContain('name: "Primary"');
-    expect(yaml).toContain('name: "Second"');
+  it("matches a CLI-style golden export", () => {
+    const yaml = createConfigBackupYaml(createSamplePayload());
+    const goldenYaml = readFileSync(
+      new URL("./__fixtures__/meshtastic-cli-export.golden.yaml", import.meta.url),
+      "utf8",
+    );
+
+    expect(yaml).toBe(goldenYaml);
+  });
+
+  it("keeps canonical top-level section order", () => {
+    const yaml = createConfigBackupYaml(createSamplePayload());
+
+    const configIndex = yaml.indexOf("config:");
+    const moduleConfigIndex = yaml.indexOf("module_config:");
+    const channelsIndex = yaml.indexOf("channels:");
+
+    expect(configIndex).toBeGreaterThanOrEqual(0);
+    expect(moduleConfigIndex).toBeGreaterThan(configIndex);
+    expect(channelsIndex).toBeGreaterThan(moduleConfigIndex);
+  });
+
+  it("serializes enums/booleans and omits legacy custom format marker", () => {
+    const yaml = createConfigBackupYaml(createSamplePayload());
+
+    expect(yaml).toContain("role: \"CLIENT\"");
+    expect(yaml).toContain("role: \"PRIMARY\"");
+    expect(yaml).toContain("uplink_enabled: true");
+    expect(yaml).not.toContain("meshtastic-web-config-backup-v1");
+    expect(yaml).not.toContain("generatedAt");
+    expect(yaml).not.toContain("format:");
+  });
+
+  it("uses CLI-compatible base64 encoding for bytes and no JSON null sentinels", () => {
+    const yaml = createConfigBackupYaml(createSamplePayload());
+
     expect(yaml).toContain('psk: "AQID"');
+    expect(yaml).not.toContain(": undefined");
   });
 });
 
