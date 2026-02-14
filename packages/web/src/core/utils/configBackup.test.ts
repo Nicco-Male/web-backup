@@ -45,20 +45,21 @@ describe("createConfigBackupYaml", () => {
     return { channels, config, moduleConfig };
   };
 
-  it("matches the meshtastic web backup envelope format", () => {
+  it("matches the meshtastic cli backup layout", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
-    expect(yaml).toContain('generatedAt: "');
-    expect(yaml).toContain('format: "meshtastic-web-config-backup-v1"');
-    expect(yaml).toContain('moduleConfig:');
-    expect(yaml).toContain('$typeName: "meshtastic.LocalConfig"');
-    expect(yaml).toContain('$typeName: "meshtastic.LocalModuleConfig"');
+    expect(yaml).toContain("# start of Meshtastic configure yaml");
+    expect(yaml).toContain("config:");
+    expect(yaml).toContain("module_config:");
+    expect(yaml).toContain("channels:");
+    expect(yaml).not.toContain("generatedAt:");
+    expect(yaml).not.toContain("format:");
   });
 
   it("keeps canonical top-level section order", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
     const configIndex = yaml.indexOf("config:");
-    const moduleConfigIndex = yaml.indexOf("moduleConfig:");
+    const moduleConfigIndex = yaml.indexOf("module_config:");
     const channelsIndex = yaml.indexOf("channels:");
 
     expect(configIndex).toBeGreaterThanOrEqual(0);
@@ -66,21 +67,20 @@ describe("createConfigBackupYaml", () => {
     expect(channelsIndex).toBeGreaterThan(moduleConfigIndex);
   });
 
-  it("serializes enums as numbers and keeps metadata fields", () => {
+  it("serializes enums as names for cli compatibility", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
-    expect(yaml).toContain("role: 12");
-    expect(yaml).toContain("role: 1");
+    expect(yaml).toContain('role: "CLIENT"');
+    expect(yaml).toContain('role: "PRIMARY"');
     expect(yaml).toContain("uplink_enabled: true");
-    expect(yaml).toContain("generatedAt");
-    expect(yaml).toContain("format:");
   });
 
-  it("uses CLI-compatible base64 encoding for bytes and no JSON null sentinels", () => {
+  it("uses CLI-compatible base64 encoding for bytes", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
     expect(yaml).toContain('psk: "AQID"');
     expect(yaml).not.toContain(": undefined");
+    expect(yaml).not.toContain("$typeName");
   });
 });
 
@@ -115,6 +115,27 @@ describe("parseConfigBackupYaml", () => {
 
     expect(parsed.errors).toEqual([]);
     expect(parsed.backup?.channels.length).toBe(1);
+  });
+
+
+  it("accepts CLI base64: prefixed secret values", () => {
+    const parsed = parseConfigBackupYaml(`
+config:
+  security:
+    public_key: base64:r7O4pSccIMGXCUlCJFJUfxlUtvnNF2+nyADtGj8i9C8=
+    private_key: base64:IKhkOAphNZr4U948HkKx+J09hK7BHCAFvvQVICwBkEc=
+module_config:
+  telemetry:
+    update_interval: 60
+channels:
+  -
+    index: 0
+    settings:
+      psk: base64:AQ==
+`);
+
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.backup?.channels[0]?.settings.psk).toEqual(new Uint8Array([1]));
   });
 
   it("returns error for malformed yaml", () => {

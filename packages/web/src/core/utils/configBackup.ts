@@ -254,26 +254,24 @@ export const createConfigBackupYaml = ({
 
   const channelList = Array.from(channels.values())
     .sort((channelA, channelB) => channelA.index - channelB.index)
-    .map((channel) =>
-      addTypeNames(
-        toJson(Protobuf.Channel.ChannelSchema, channel, {
-          enumAsInteger: true,
-          useProtoFieldName: false,
-          emitDefaultValues: true,
-        }) as SerializableValue,
-        channel,
-      ),
+    .map(
+      (channel) =>
+        sanitizeForExport(
+          toJson(Protobuf.Channel.ChannelSchema, channel, {
+            enumAsInteger: false,
+            useProtoFieldName: false,
+            emitDefaultValues: true,
+          }) as SerializableValue,
+        ) as SerializableValue,
     );
 
   const backup = {
-    generatedAt: new Date().toISOString(),
-    format: "meshtastic-web-config-backup-v1",
     config: configJson,
-    moduleConfig: moduleConfigJson,
+    module_config: moduleConfigJson,
     channels: channelList,
   };
 
-  return `${toYaml(backup)}\n`;
+  return `# start of Meshtastic configure yaml\n${toYaml(backup)}\n`;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
@@ -325,16 +323,16 @@ export const parseConfigBackupYaml = (
   try {
     const config = fromJson(
       Protobuf.LocalOnly.LocalConfigSchema,
-      stripTypeNames(parsed.config),
+      normalizeCliEncodedValues(stripTypeNames(parsed.config)),
       { ignoreUnknownFields: false },
     );
     const moduleConfig = fromJson(
       Protobuf.LocalOnly.LocalModuleConfigSchema,
-      stripTypeNames(rawModuleConfig),
+      normalizeCliEncodedValues(stripTypeNames(rawModuleConfig)),
       { ignoreUnknownFields: false },
     );
     const channels = parsed.channels.map((channel) =>
-      fromJson(Protobuf.Channel.ChannelSchema, stripTypeNames(channel), {
+      fromJson(Protobuf.Channel.ChannelSchema, normalizeCliEncodedValues(stripTypeNames(channel)), {
         ignoreUnknownFields: false,
       }),
     );
@@ -372,42 +370,33 @@ const stripTypeNames = (value: unknown): unknown => {
   return output;
 };
 
-const addTypeNames = (jsonValue: SerializableValue, messageValue: unknown) => {
-  if (Array.isArray(jsonValue)) {
-    const sourceArray = Array.isArray(messageValue) ? messageValue : [];
-    return jsonValue.map((entry, index) => addTypeNames(entry, sourceArray[index]));
+const normalizeCliEncodedValues = (value: unknown): unknown => {
+  if (Array.isArray(value)) {
+    return value.map((entry) => normalizeCliEncodedValues(entry));
   }
 
-  if (jsonValue === null || typeof jsonValue !== "object") {
-    return jsonValue;
+  if (typeof value === "string" && value.startsWith("base64:")) {
+    return value.slice("base64:".length);
   }
 
-  const sourceObject =
-    messageValue !== null && typeof messageValue === "object"
-      ? (messageValue as Record<string, unknown>)
-      : undefined;
-
-  const output: Record<string, SerializableValue> = {};
-  if (typeof sourceObject?.$typeName === "string") {
-    output.$typeName = sourceObject.$typeName;
+  if (!isObject(value)) {
+    return value;
   }
 
-  Object.entries(jsonValue).forEach(([key, entryValue]) => {
-    output[key] = addTypeNames(entryValue, sourceObject?.[key]);
+  const output: Record<string, unknown> = {};
+  Object.entries(value).forEach(([key, entryValue]) => {
+    output[key] = normalizeCliEncodedValues(entryValue);
   });
 
   return output;
 };
 
 const toBackupJson = <T>(schema: Parameters<typeof toJson>[0], message: T) => {
-  return addTypeNames(
-    sanitizeForExport(
-      toJson(schema, message, {
-        useProtoFieldName: false,
-        emitDefaultValues: true,
-        enumAsInteger: true,
-      }) as unknown,
-    ),
-    message,
+  return sanitizeForExport(
+    toJson(schema, message, {
+      useProtoFieldName: false,
+      emitDefaultValues: true,
+      enumAsInteger: false,
+    }) as unknown,
   );
 };
