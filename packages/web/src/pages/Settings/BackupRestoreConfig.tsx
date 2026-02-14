@@ -11,7 +11,7 @@ import {
 } from "@components/UI/AlertDialog.tsx";
 import { Button } from "@components/UI/Button.tsx";
 import { useToast } from "@core/hooks/useToast.ts";
-import { useDevice, useNodeDB } from "@core/stores";
+import { useDevice } from "@core/stores";
 import {
   createConfigBackupYaml,
   parseConfigBackupYaml,
@@ -53,7 +53,6 @@ const isDifferent = (left: unknown, right: unknown): boolean => {
 
 export const BackupRestoreConfig = () => {
   const { channels, config, moduleConfig, setChange } = useDevice();
-  const { getMyNode } = useNodeDB();
   const { toast } = useToast();
   const { t } = useTranslation(["config", "dialog"]);
 
@@ -64,14 +63,10 @@ export const BackupRestoreConfig = () => {
   );
 
   const downloadConfigBackup = () => {
-    const myNode = getMyNode();
     const backupYaml = createConfigBackupYaml({
       channels,
       config,
       moduleConfig,
-      owner: myNode?.user?.longName,
-      ownerShort: myNode?.user?.shortName,
-      location: myNode?.position,
     });
 
     const now = new Date().toISOString().replace(/[:.]/g, "-");
