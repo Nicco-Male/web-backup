@@ -1,5 +1,5 @@
 import { fromJson, toJson } from "@bufbuild/protobuf";
-import type { Protobuf } from "@meshtastic/core";
+import { Protobuf } from "@meshtastic/core";
 
 type SerializableValue =
   | string
