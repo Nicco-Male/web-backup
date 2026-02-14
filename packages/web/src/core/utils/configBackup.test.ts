@@ -43,7 +43,15 @@ describe("createConfigBackupYaml", () => {
       },
     });
 
-    return { channels, config, moduleConfig };
+    return {
+      channels,
+      config,
+      moduleConfig,
+      owner: "Meshtastic Tester",
+      ownerShort: "MTST",
+      location: { latitudeI: 451234567, longitudeI: 91234567 },
+      cannedMessages: ["hello", "world"],
+    };
   };
 
   it("matches the meshtastic cli backup layout", () => {
@@ -51,7 +59,14 @@ describe("createConfigBackupYaml", () => {
     expect(yaml).toContain("# start of Meshtastic configure yaml");
     expect(yaml).toContain("config:");
     expect(yaml).toContain("module_config:");
-    expect(yaml).toContain("channels:");
+    expect(yaml).toContain("canned_messages: \"hello|world\"");
+    expect(yaml).toContain("channel_url: https://meshtastic.org/e/#");
+    expect(yaml).toContain("owner: \"Meshtastic Tester\"");
+    expect(yaml).toContain("owner_short: MTST");
+    expect(yaml).toContain("location:");
+    expect(yaml).toContain("lat: 45.1234567");
+    expect(yaml).toContain("lon: 9.1234567");
+    expect(yaml).not.toContain("channels:");
     expect(yaml).not.toContain("generatedAt:");
     expect(yaml).not.toContain("format:");
   });
@@ -59,13 +74,21 @@ describe("createConfigBackupYaml", () => {
   it("keeps canonical top-level section order", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
+    const cannedIndex = yaml.indexOf("canned_messages:");
+    const channelUrlIndex = yaml.indexOf("channel_url:");
     const configIndex = yaml.indexOf("config:");
+    const locationIndex = yaml.indexOf("location:");
     const moduleConfigIndex = yaml.indexOf("module_config:");
-    const channelsIndex = yaml.indexOf("channels:");
+    const ownerIndex = yaml.indexOf("owner:");
+    const ownerShortIndex = yaml.indexOf("owner_short:");
 
-    expect(configIndex).toBeGreaterThanOrEqual(0);
-    expect(moduleConfigIndex).toBeGreaterThan(configIndex);
-    expect(channelsIndex).toBeGreaterThan(moduleConfigIndex);
+    expect(cannedIndex).toBeGreaterThanOrEqual(0);
+    expect(channelUrlIndex).toBeGreaterThan(cannedIndex);
+    expect(configIndex).toBeGreaterThan(channelUrlIndex);
+    expect(locationIndex).toBeGreaterThan(configIndex);
+    expect(moduleConfigIndex).toBeGreaterThan(locationIndex);
+    expect(ownerIndex).toBeGreaterThan(moduleConfigIndex);
+    expect(ownerShortIndex).toBeGreaterThan(ownerIndex);
   });
 
   it("serializes enums as names for cli compatibility", () => {
