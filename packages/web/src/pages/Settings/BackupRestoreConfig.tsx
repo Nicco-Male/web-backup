@@ -15,7 +15,7 @@ import { useDevice } from "@core/stores";
 import {
   createConfigBackupYaml,
   parseConfigBackupYaml,
-  type ConfigBackupRestorePayload,
+  type ConfigBackupPayload,
 } from "@core/utils/configBackup.ts";
 import { DownloadIcon, UploadIcon } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -58,7 +58,7 @@ export const BackupRestoreConfig = () => {
 
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<string[]>([]);
-  const [backupPreview, setBackupPreview] = useState<ConfigBackupRestorePayload | null>(
+  const [backupPreview, setBackupPreview] = useState<ConfigBackupPayload | null>(
     null,
   );
 
