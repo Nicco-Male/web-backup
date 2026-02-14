@@ -48,9 +48,10 @@ describe("createConfigBackupYaml", () => {
   it("matches the meshtastic cli backup layout", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
     expect(yaml).toContain("# start of Meshtastic configure yaml");
+    expect(yaml).toContain("canned_messages:");
+    expect(yaml).toContain("channel_url: https://meshtastic.org/e/#");
     expect(yaml).toContain("config:");
     expect(yaml).toContain("module_config:");
-    expect(yaml).toContain("channels:");
     expect(yaml).not.toContain("generatedAt:");
     expect(yaml).not.toContain("format:");
   });
@@ -60,11 +61,13 @@ describe("createConfigBackupYaml", () => {
 
     const configIndex = yaml.indexOf("config:");
     const moduleConfigIndex = yaml.indexOf("module_config:");
-    const channelsIndex = yaml.indexOf("channels:");
+    const locationIndex = yaml.indexOf("location:");
+    const ownerIndex = yaml.indexOf("owner:");
 
     expect(configIndex).toBeGreaterThanOrEqual(0);
     expect(moduleConfigIndex).toBeGreaterThan(configIndex);
-    expect(channelsIndex).toBeGreaterThan(moduleConfigIndex);
+    expect(locationIndex).toBe(-1);
+    expect(ownerIndex).toBe(-1);
   });
 
   it("serializes enums as names for cli compatibility", () => {
@@ -114,6 +117,23 @@ describe("createConfigBackupYaml", () => {
 
     expect(yaml).toContain("ignore_incoming: []");
   });
+
+  it("adds owner/location metadata when available", () => {
+    const yaml = createConfigBackupYaml({
+      ...createSamplePayload(),
+      owner: "Node Long",
+      ownerShort: "NL",
+      location: { lat: 43.7, lon: 10.4 },
+      cannedMessages: ["Hi", "Bye"],
+    });
+
+    expect(yaml).toContain("canned_messages: Hi|Bye");
+    expect(yaml).toContain("location:");
+    expect(yaml).toContain("lat: 43.7");
+    expect(yaml).toContain("lon: 10.4");
+    expect(yaml).toContain("owner: Node Long");
+    expect(yaml).toContain("owner_short: NL");
+  });
 });
 
 describe("parseConfigBackupYaml", () => {
@@ -159,15 +179,15 @@ config:
 module_config:
   telemetry:
     update_interval: 60
-channels:
-  -
-    index: 0
-    settings:
-      psk: base64:AQ==
 `);
 
     expect(parsed.errors).toEqual([]);
-    expect(parsed.backup?.channels[0]?.settings.psk).toEqual(new Uint8Array([1]));
+    expect(parsed.backup?.config.security.publicKey).toEqual(
+      new Uint8Array([
+        175, 179, 184, 165, 39, 28, 32, 193, 151, 9, 73, 66, 36, 82, 84, 127,
+        25, 84, 182, 249, 205, 23, 111, 167, 200, 0, 237, 26, 63, 34, 244, 47,
+      ]),
+    );
   });
 
   it("returns error for malformed yaml", () => {

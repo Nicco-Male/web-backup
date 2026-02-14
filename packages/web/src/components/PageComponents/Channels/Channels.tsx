@@ -7,8 +7,11 @@ import {
   TabsList,
   TabsTrigger,
 } from "@components/UI/Tabs.tsx";
-import { useDevice } from "@core/stores";
-import { createConfigBackupYaml } from "@core/utils/configBackup.ts";
+import { useDevice, useNodeDB } from "@core/stores";
+import {
+  createConfigBackupYaml,
+  getLocationFromNode,
+} from "@core/utils/configBackup.ts";
 import type { Protobuf } from "@meshtastic/core";
 import i18next from "i18next";
 import { DownloadIcon, QrCodeIcon, UploadIcon } from "lucide-react";
@@ -35,15 +38,20 @@ export const getChannelName = (channel: Protobuf.Channel.Channel) => {
 export const Channels = ({ onFormInit }: ConfigProps) => {
   const { channels, config, moduleConfig, hasChannelChange, setDialogOpen } =
     useDevice();
+  const { getMyNode } = useNodeDB();
   const { t } = useTranslation("channels");
 
   const allChannels = Array.from(channels.values());
 
   const downloadConfigBackup = useCallback(() => {
+    const myNode = getMyNode();
     const backupYaml = createConfigBackupYaml({
       channels,
       config,
       moduleConfig,
+      owner: myNode?.user?.longName,
+      ownerShort: myNode?.user?.shortName,
+      location: getLocationFromNode(myNode),
     });
 
     const now = new Date().toISOString().replace(/[:.]/g, "-");
@@ -62,7 +70,7 @@ export const Channels = ({ onFormInit }: ConfigProps) => {
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
-  }, [channels, config, moduleConfig]);
+  }, [channels, config, moduleConfig, getMyNode]);
 
   const flags = useMemo(
     () =>
