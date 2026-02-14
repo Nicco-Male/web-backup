@@ -77,10 +77,10 @@ export default defineConfig(({ mode }) => {
       },
     },
     server: {
-      host: "0.0.0.0",
+      host: true,
       port: 3000,
       strictPort: true,
-      allowedHosts: true,
+      allowedHosts: ["backmsh.niccomale.it"],
       headers: {
         "Content-Security-Policy": CONTENT_SECURITY_POLICY,
         "Cross-Origin-Opener-Policy": "same-origin",
