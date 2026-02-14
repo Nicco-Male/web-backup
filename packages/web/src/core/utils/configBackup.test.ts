@@ -2,11 +2,7 @@ import { create } from "@bufbuild/protobuf";
 import { readFileSync } from "node:fs";
 import { Protobuf } from "@meshtastic/core";
 import { describe, expect, it } from "vitest";
-import {
-  CONFIG_BACKUP_FORMAT,
-  createConfigBackupYaml,
-  parseConfigBackupYaml,
-} from "./configBackup.ts";
+import { createConfigBackupYaml, parseConfigBackupYaml } from "./configBackup.ts";
 
 describe("createConfigBackupYaml", () => {
   const createSamplePayload = () => {
@@ -72,7 +68,7 @@ describe("createConfigBackupYaml", () => {
     expect(channelsIndex).toBeGreaterThan(moduleConfigIndex);
   });
 
-  it("serializes enums/booleans and omits legacy custom format marker", () => {
+  it("serializes enums/booleans and keeps pure CLI structure", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
     expect(yaml).toContain("role: \"CLIENT\"");
@@ -121,7 +117,6 @@ describe("parseConfigBackupYaml", () => {
     const parsed = parseConfigBackupYaml(yaml);
 
     expect(parsed.errors).toEqual([]);
-    expect(parsed.backup?.format).toBe(CONFIG_BACKUP_FORMAT);
     expect(parsed.backup?.channels.length).toBe(1);
   });
 
