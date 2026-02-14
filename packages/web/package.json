@@ -84,6 +84,7 @@
     "vite": "^7.1.11",
     "vite-plugin-html": "^3.2.2",
     "vite-plugin-pwa": "^1.0.3",
+    "yaml": "^2.8.1",
     "zod": "^4.1.12",
     "zustand": "5.0.8"
   },
