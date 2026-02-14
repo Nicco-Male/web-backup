@@ -130,6 +130,10 @@ const toYaml = (value: SerializableValue, indent = 0): string => {
 
     return entries
       .map(([key, entryValue]) => {
+        if (Array.isArray(entryValue) && entryValue.length === 0) {
+          return `${prefix}${key}: []`;
+        }
+
         if (entryValue !== null && typeof entryValue === "object") {
           return `${prefix}${key}:\n${toYaml(entryValue, indent + 2)}`;
         }

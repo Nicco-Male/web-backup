@@ -82,6 +82,38 @@ describe("createConfigBackupYaml", () => {
     expect(yaml).not.toContain(": undefined");
     expect(yaml).not.toContain("$typeName");
   });
+
+  it("serializes empty arrays as inline YAML scalars", () => {
+    const channels = new Map([
+      [
+        0,
+        create(Protobuf.Channel.ChannelSchema, {
+          index: 0,
+          role: Protobuf.Channel.Channel_Role.PRIMARY,
+          settings: {
+            name: "Primary",
+            ignoreIncoming: [],
+          },
+        }),
+      ],
+    ]);
+
+    const config = create(Protobuf.LocalOnly.LocalConfigSchema, {
+      device: {
+        role: Protobuf.Config.Config_DeviceConfig_Role.CLIENT,
+      },
+    });
+
+    const moduleConfig = create(Protobuf.LocalOnly.LocalModuleConfigSchema, {
+      telemetry: {
+        updateInterval: 60,
+      },
+    });
+
+    const yaml = createConfigBackupYaml({ channels, config, moduleConfig });
+
+    expect(yaml).toContain("ignore_incoming: []");
+  });
 });
 
 describe("parseConfigBackupYaml", () => {
