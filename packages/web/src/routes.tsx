@@ -139,6 +139,12 @@ export const moduleRoute = createRoute({
   component: ConfigPage,
 });
 
+export const backupRoute = createRoute({
+  getParentRoute: () => settingsRoute,
+  path: "backup",
+  component: ConfigPage,
+});
+
 const nodesRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/nodes",
@@ -163,7 +169,7 @@ const routeTree = rootRoute.addChildren([
   messagesWithParamsRoute,
   mapRoute,
   mapWithParamsRoute,
-  settingsRoute.addChildren([radioRoute, deviceRoute, moduleRoute]),
+  settingsRoute.addChildren([radioRoute, deviceRoute, moduleRoute, backupRoute]),
   nodesRoute,
   dialogWithParamsRoute,
   connectionsRoute,

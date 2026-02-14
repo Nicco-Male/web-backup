@@ -454,5 +454,39 @@
       "label": "Licensed amateur radio (HAM)",
       "description": "Enable if you are a licensed amateur radio operator, enabling this option disables encryption and is not compatible with the default Meshtastic network."
     }
+  },
+  "navigation": {
+    "radioConfig": "Radio Config",
+    "deviceConfig": "Device Config",
+    "moduleConfig": "Module Config",
+    "backupRestore": "Backup & Ripristino"
+  },
+  "backupRestore": {
+    "title": "Backup & Ripristino",
+    "description": "Gestisci export e restore della configurazione completa del dispositivo.",
+    "exportTitle": "Esporta configurazione",
+    "exportDescription": "Scarica la configurazione completa in formato compatibile CLI",
+    "exportAction": "Scarica backup YAML",
+    "restoreTitle": "Ripristina da file",
+    "restoreDescription": "Carica un file .yaml, valida il contenuto e verifica le differenze prima di applicare le modifiche.",
+    "selectFile": "Seleziona file YAML",
+    "selectedFile": "File selezionato: {{fileName}}",
+    "previewTitle": "Anteprima differenze",
+    "previewConfig": "Config base modificate: {{count}}",
+    "previewModule": "Config moduli modificate: {{count}}",
+    "previewChannels": "Canali modificati: {{count}}",
+    "applyAction": "Metti in coda il ripristino",
+    "toastQueued": {
+      "title": "Ripristino pronto",
+      "description": "Le modifiche sono state aggiunte alla coda. Premi Salva per applicarle al dispositivo."
+    },
+    "errors": {
+      "invalidFile": "File non valido. Carica un backup YAML valido.",
+      "unsupportedVersion": "Versione backup non supportata.",
+      "missingConfig": "Campo mancante: config.",
+      "missingModuleConfig": "Campo mancante: moduleConfig.",
+      "missingChannels": "Campo mancante: channels.",
+      "invalidChannels": "Dati canali non validi nel backup."
+    }
   }
 }

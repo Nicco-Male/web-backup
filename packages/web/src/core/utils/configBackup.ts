@@ -9,10 +9,20 @@ type SerializableValue =
   | SerializableValue[]
   | { [key: string]: SerializableValue };
 
-const isSerializableObject = (
-  value: SerializableValue,
-): value is { [key: string]: SerializableValue } =>
-  value !== null && !Array.isArray(value) && typeof value === "object";
+export const CONFIG_BACKUP_FORMAT = "meshtastic-web-config-backup-v1";
+
+export interface ConfigBackupPayload {
+  format: string;
+  generatedAt?: string;
+  config: Protobuf.LocalOnly.LocalConfig;
+  moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
+  channels: Protobuf.Channel.Channel[];
+}
+
+export interface ConfigBackupValidationResult {
+  backup?: ConfigBackupPayload;
+  errors: string[];
+}
 
 const sanitizeForExport = (value: unknown): SerializableValue => {
   if (value === null) {
@@ -120,35 +130,108 @@ const toYaml = (value: SerializableValue, indent = 0): string => {
   return `${prefix}${yamlScalar(value)}`;
 };
 
-const toCliJson = <TMessage>(schema: TMessage, message: unknown): SerializableValue =>
-  sanitizeForExport(
-    toJson(schema, message as never, {
-      enumAsInteger: false,
-      useProtoFieldName: true,
-      emitDefaultValues: false,
-    }),
-  );
-
-const pruneEmptyObjects = (value: SerializableValue): SerializableValue => {
-  if (Array.isArray(value)) {
-    return value.map((entry) => pruneEmptyObjects(entry));
+const parseScalar = (source: string): unknown => {
+  if (source === "null") {
+    return null;
   }
 
-  if (!isSerializableObject(value)) {
-    return value;
+  if (source === "true") {
+    return true;
   }
 
-  const prunedEntries = Object.entries(value).flatMap(([key, entryValue]) => {
-    const prunedValue = pruneEmptyObjects(entryValue);
+  if (source === "false") {
+    return false;
+  }
 
-    if (isSerializableObject(prunedValue) && Object.keys(prunedValue).length === 0) {
-      return [];
+  if (source.startsWith('"') && source.endsWith('"')) {
+    return JSON.parse(source);
+  }
+
+  if (/^-?\d+(\.\d+)?$/.test(source)) {
+    return Number(source);
+  }
+
+  throw new Error("invalid scalar");
+};
+
+const parseYamlSubset = (source: string): unknown => {
+  const lines = source
+    .split(/\r?\n/)
+    .filter((line) => line.trim().length > 0)
+    .map((line) => {
+      const trimmed = line.trimStart();
+      return {
+        indent: line.length - trimmed.length,
+        text: trimmed,
+      };
+    });
+
+  let index = 0;
+
+  const parseAtIndent = (indent: number): unknown => {
+    if (index >= lines.length) {
+      return null;
     }
 
-    return [[key, prunedValue] as const];
-  });
+    if (lines[index].indent < indent) {
+      return null;
+    }
 
-  return Object.fromEntries(prunedEntries);
+    if (lines[index].text.startsWith("-")) {
+      const array: unknown[] = [];
+      while (index < lines.length && lines[index].indent === indent) {
+        const line = lines[index];
+        if (!line.text.startsWith("-")) {
+          break;
+        }
+
+        if (line.text === "-") {
+          index += 1;
+          array.push(parseAtIndent(indent + 2));
+          continue;
+        }
+
+        const scalar = line.text.slice(1).trim();
+        if (!scalar.length) {
+          throw new Error("invalid array entry");
+        }
+
+        array.push(parseScalar(scalar));
+        index += 1;
+      }
+      return array;
+    }
+
+    const obj: Record<string, unknown> = {};
+    while (index < lines.length && lines[index].indent === indent) {
+      const line = lines[index];
+      if (line.text.startsWith("-")) {
+        break;
+      }
+
+      const separatorIndex = line.text.indexOf(":");
+      if (separatorIndex < 0) {
+        throw new Error("invalid object entry");
+      }
+
+      const key = line.text.slice(0, separatorIndex).trim();
+      const rest = line.text.slice(separatorIndex + 1).trim();
+      index += 1;
+
+      if (rest.length === 0) {
+        obj[key] = parseAtIndent(indent + 2);
+      } else if (rest === "{}") {
+        obj[key] = {};
+      } else if (rest === "[]") {
+        obj[key] = [];
+      } else {
+        obj[key] = parseScalar(rest);
+      }
+    }
+    return obj;
+  };
+
+  return parseAtIndent(0);
 };
 
 export const createConfigBackupYaml = ({
@@ -165,12 +248,64 @@ export const createConfigBackupYaml = ({
     .map((channel) => toCliJson(Protobuf.Channel.ChannelSchema, channel));
 
   const backup = {
-    config: toCliJson(Protobuf.LocalOnly.LocalConfigSchema, config),
-    module_config: pruneEmptyObjects(
-      toCliJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig),
-    ),
+    generatedAt: new Date().toISOString(),
+    format: CONFIG_BACKUP_FORMAT,
+    config,
+    moduleConfig,
     channels: channelList,
   };
 
   return `${toYaml(backup)}\n`;
+};
+
+const isObject = (value: unknown): value is Record<string, unknown> => {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
+};
+
+export const parseConfigBackupYaml = (
+  source: string,
+): ConfigBackupValidationResult => {
+  const errors: string[] = [];
+
+  let parsed: unknown;
+  try {
+    parsed = parseYamlSubset(source);
+  } catch {
+    return { errors: ["invalidFile"] };
+  }
+
+  if (!isObject(parsed)) {
+    return { errors: ["invalidFile"] };
+  }
+
+  if (parsed.format !== CONFIG_BACKUP_FORMAT) {
+    errors.push("unsupportedVersion");
+  }
+
+  if (!isObject(parsed.config)) {
+    errors.push("missingConfig");
+  }
+
+  if (!isObject(parsed.moduleConfig)) {
+    errors.push("missingModuleConfig");
+  }
+
+  if (!Array.isArray(parsed.channels)) {
+    errors.push("missingChannels");
+  } else if (
+    parsed.channels.some(
+      (channel) => !isObject(channel) || typeof channel.index !== "number",
+    )
+  ) {
+    errors.push("invalidChannels");
+  }
+
+  if (errors.length > 0) {
+    return { errors };
+  }
+
+  return {
+    errors: [],
+    backup: parsed as ConfigBackupPayload,
+  };
 };

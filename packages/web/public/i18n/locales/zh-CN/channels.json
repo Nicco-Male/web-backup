@@ -5,7 +5,8 @@
     "broadcastLabel": "主要",
     "channelIndex": "Ch {{index}}",
     "import": "导入",
-    "export": "Export"
+    "export": "Export",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Please enter a valid {{bits}} bit PSK."

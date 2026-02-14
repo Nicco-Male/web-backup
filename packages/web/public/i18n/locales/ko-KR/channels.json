@@ -5,7 +5,8 @@
     "broadcastLabel": "주 채널",
     "channelIndex": "Ch {{index}}",
     "import": "불러오기",
-    "export": "내보내기"
+    "export": "내보내기",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "유효한 {{bits}} bit PSK를 입력해 주세요."

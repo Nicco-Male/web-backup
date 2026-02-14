@@ -5,11 +5,8 @@
     "broadcastLabel": "Primary",
     "channelIndex": "Ch {{index}}",
     "import": "Import",
-    "exportCli": "Export standard CLI",
-    "exportCliDescription": "CLI-compatible channel export (URL / QR). Restorable in CLI and Web import.",
-    "exportWeb": "Export Web complete",
-    "exportWebDescription": "Web internal backup policy: full device config YAML for Meshtastic Web restore workflows.",
-    "backupCompatibilityLabel": "Compatibility: CLI standard export + Web internal full backup"
+    "export": "Export",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Please enter a valid {{bits}} bit PSK."

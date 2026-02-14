@@ -234,5 +234,11 @@
     "description": "Dadurch wird die Konfiguration des verbundenen Geräts auf die Werkseinstellungen zurückgesetzt und alle Konfigurationen auf dem Gerät gelöscht. Dieser Vorgang kann nicht rückgängig gemacht werden. Möchten Sie wirklich fortfahren?",
     "confirm": "Auf Werkseinstellungen zurücksetzen",
     "failedTitle": "Beim Zurücksetzen auf die Werkseinstellungen ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut."
+  },
+  "backupRestoreConfirm": {
+    "title": "Applicare il ripristino?",
+    "description": "Le differenze rilevate verranno aggiunte alla coda modifiche. Dovrai premere Salva per inviarle al dispositivo.",
+    "confirm": "Conferma ripristino",
+    "cancel": "Annulla"
   }
 }

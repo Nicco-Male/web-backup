@@ -1,4 +1,4 @@
-import { deviceRoute, moduleRoute, radioRoute } from "@app/routes";
+import { backupRoute, deviceRoute, moduleRoute, radioRoute } from "@app/routes";
 import { toBinary } from "@bufbuild/protobuf";
 import { PageLayout } from "@components/PageLayout.tsx";
 import { Sidebar } from "@components/Sidebar.tsx";
@@ -12,6 +12,7 @@ import { DeviceConfig } from "@pages/Settings/DeviceConfig.tsx";
 import { ModuleConfig } from "@pages/Settings/ModuleConfig.tsx";
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import {
+  ArchiveRestoreIcon,
   LayersIcon,
   RadioTowerIcon,
   RefreshCwIcon,
@@ -22,6 +23,7 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FieldValues, UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
+import { BackupRestoreConfig } from "./BackupRestoreConfig.tsx";
 import { RadioConfig } from "./RadioConfig.tsx";
 
 const ConfigPage = () => {
@@ -80,6 +82,14 @@ const ConfigPage = () => {
         icon: LayersIcon,
         changeCount: channelChangeCount,
         component: ModuleConfig,
+      },
+      {
+        key: "backup",
+        route: backupRoute,
+        label: t("navigation.backupRestore"),
+        icon: ArchiveRestoreIcon,
+        changeCount: 0,
+        component: BackupRestoreConfig,
       },
     ],
     [t, configChangeCount, moduleConfigChangeCount, channelChangeCount],

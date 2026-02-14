@@ -5,7 +5,8 @@
     "broadcastLabel": "Elsődleges",
     "channelIndex": "Csat. {{index}}",
     "import": "Importálás",
-    "export": "Exportálás"
+    "export": "Exportálás",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Adj meg egy érvényes {{bits}} bites PSK-t."
