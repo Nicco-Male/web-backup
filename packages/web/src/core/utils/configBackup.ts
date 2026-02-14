@@ -10,6 +10,8 @@ type SerializableValue =
   | SerializableValue[]
   | { [key: string]: SerializableValue };
 
+type SerializableObject = { [key: string]: SerializableValue };
+
 export interface ConfigBackupPayload {
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
@@ -74,6 +76,82 @@ const sanitizeForExport = (value: unknown): SerializableValue => {
 };
 
 const quoteScalar = (value: string) => JSON.stringify(value);
+
+const pickInOrder = (
+  source: Record<string, unknown>,
+  keys: string[],
+): SerializableObject => {
+  const output: SerializableObject = {};
+
+  keys.forEach((key) => {
+    const entryValue = source[key];
+    if (entryValue === undefined) {
+      return;
+    }
+
+    output[key] = sanitizeForExport(entryValue);
+  });
+
+  return output;
+};
+
+const pruneEmpty = (value: SerializableValue | undefined): SerializableValue | undefined => {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+
+  if (Array.isArray(value)) {
+    const pruned = value
+      .map((entry) => pruneEmpty(entry))
+      .filter((entry): entry is SerializableValue => entry !== undefined);
+    return pruned.length > 0 ? pruned : undefined;
+  }
+
+  if (typeof value === "object") {
+    const output: SerializableObject = {};
+    Object.entries(value).forEach(([key, entryValue]) => {
+      const prunedEntry = pruneEmpty(entryValue);
+      if (prunedEntry === undefined) {
+        return;
+      }
+
+      if (
+        typeof prunedEntry === "object" &&
+        !Array.isArray(prunedEntry) &&
+        Object.keys(prunedEntry).length === 0
+      ) {
+        return;
+      }
+
+      output[key] = prunedEntry;
+    });
+
+    return Object.keys(output).length > 0 ? output : undefined;
+  }
+
+  return value;
+};
+
+const cliUnicodeEscapes = (value: string): string => {
+  let output = "";
+
+  for (const char of value) {
+    const codePoint = char.codePointAt(0);
+    if (codePoint === undefined) {
+      continue;
+    }
+
+    if (codePoint <= 0x7e) {
+      output += char;
+    } else if (codePoint <= 0xffff) {
+      output += `\\u${codePoint.toString(16).toUpperCase().padStart(4, "0")}`;
+    } else {
+      output += `\\U${codePoint.toString(16).toUpperCase().padStart(8, "0")}`;
+    }
+  }
+
+  return output;
+};
 
 const isPlainYamlString = (value: string): boolean => {
   if (!value.length || value !== value.trim()) {
@@ -336,35 +414,137 @@ export const createConfigBackupYaml = ({
 }) => {
   const configJson = normalizeCliEncodedBytesForExport(
     toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config),
-  ) as SerializableValue;
+  ) as Record<string, unknown>;
   const moduleConfigJson = normalizeCliEncodedBytesForExport(
     toBackupJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig),
-  ) as SerializableValue;
+  ) as Record<string, unknown>;
 
-  const backup: Record<string, SerializableValue> = {
-    canned_messages: (cannedMessages ?? []).join("|"),
-    channel_url: createChannelUrl({ channels, loraConfig: config.lora }),
-    config: configJson,
+  const orderedConfig = {
+    bluetooth: pickInOrder(isObject(configJson.bluetooth) ? configJson.bluetooth : {}, [
+      "enabled",
+      "fixedPin",
+      "mode",
+    ]),
+    device: pickInOrder(isObject(configJson.device) ? configJson.device : {}, [
+      "disableTripleClick",
+      "nodeInfoBroadcastSecs",
+      "role",
+      "tzdef",
+    ]),
+    display: pickInOrder(isObject(configJson.display) ? configJson.display : {}, ["screenOnSecs"]),
+    lora: pickInOrder(isObject(configJson.lora) ? configJson.lora : {}, [
+      "bandwidth",
+      "codingRate",
+      "hopLimit",
+      "ignoreMqtt",
+      "modemPreset",
+      "region",
+      "spreadFactor",
+      "sx126xRxBoostedGain",
+      "txEnabled",
+      "txPower",
+      "usePreset",
+    ]),
+    network: pickInOrder(isObject(configJson.network) ? configJson.network : {}, [
+      "enabledProtocols",
+      "ntpServer",
+    ]),
+    position: pickInOrder(isObject(configJson.position) ? configJson.position : {}, [
+      "broadcastSmartMinimumDistance",
+      "broadcastSmartMinimumIntervalSecs",
+      "fixedPosition",
+      "gpsUpdateInterval",
+      "positionBroadcastSecs",
+      "positionBroadcastSmartEnabled",
+      "positionFlags",
+    ]),
+    power: pickInOrder(isObject(configJson.power) ? configJson.power : {}, [
+      "lsSecs",
+      "minWakeSecs",
+      "sdsSecs",
+      "waitBluetoothSecs",
+    ]),
+    security: pickInOrder(isObject(configJson.security) ? configJson.security : {}, [
+      "adminKey",
+      "privateKey",
+      "publicKey",
+      "serialEnabled",
+    ]),
   };
 
-  if (location?.lat !== undefined && location?.lon !== undefined) {
-    backup.location = {
-      lat: location.lat,
-      lon: location.lon,
-    };
-  }
+  const mqttConfig = isObject(moduleConfigJson.mqtt) ? moduleConfigJson.mqtt : {};
+  const orderedModuleConfig = {
+    ambientLighting: pickInOrder(
+      isObject(moduleConfigJson.ambientLighting) ? moduleConfigJson.ambientLighting : {},
+      ["blue", "current", "green", "red"],
+    ),
+    cannedMessage: pickInOrder(
+      isObject(moduleConfigJson.cannedMessage) ? moduleConfigJson.cannedMessage : {},
+      ["enabled"],
+    ),
+    detectionSensor: pickInOrder(
+      isObject(moduleConfigJson.detectionSensor) ? moduleConfigJson.detectionSensor : {},
+      ["detectionTriggerType", "minimumBroadcastSecs"],
+    ),
+    mqtt: {
+      ...pickInOrder(mqttConfig, [
+        "address",
+        "enabled",
+        "encryptionEnabled",
+        "jsonEnabled",
+        "mapReportSettings",
+        "mapReportingEnabled",
+        "password",
+        "root",
+        "username",
+      ]),
+      mapReportSettings: pickInOrder(
+        isObject(mqttConfig.mapReportSettings) ? mqttConfig.mapReportSettings : {},
+        ["positionPrecision", "publishIntervalSecs"],
+      ),
+    },
+    neighborInfo: pickInOrder(
+      isObject(moduleConfigJson.neighborInfo) ? moduleConfigJson.neighborInfo : {},
+      ["updateInterval"],
+    ),
+    storeForward: pickInOrder(
+      isObject(moduleConfigJson.storeForward) ? moduleConfigJson.storeForward : {},
+      [
+        "enabled",
+        "heartbeat",
+        "historyReturnMax",
+        "historyReturnWindow",
+        "isServer",
+        "records",
+      ],
+    ),
+  };
 
-  backup.module_config = moduleConfigJson;
+  const backup = pruneEmpty({
+    canned_messages: (cannedMessages ?? []).join("|"),
+    channel_url: createChannelUrl({ channels, loraConfig: config.lora }),
+    config: orderedConfig,
+    location:
+      location?.lat !== undefined && location?.lon !== undefined
+        ? { lat: location.lat, lon: location.lon }
+        : undefined,
+    module_config: orderedModuleConfig,
+    owner,
+    owner_short: ownerShort,
+  });
+
+  let yaml = `# start of Meshtastic configure yaml
+${toYaml(backup ?? {})}
+`;
 
   if (owner) {
-    backup.owner = owner;
+    yaml = yaml.replace(/^owner:.*$/m, `owner: "${cliUnicodeEscapes(owner)}"`);
   }
 
-  if (ownerShort) {
-    backup.owner_short = ownerShort;
-  }
+  yaml = yaml.replace(/^canned_messages: "(.*)"$/m, "canned_messages: $1");
+  yaml = yaml.replace(/^channel_url: "(https:\/\/.*)"$/m, "channel_url: $1");
 
-  return `# start of Meshtastic configure yaml\n${toYaml(backup)}\n`;
+  return yaml;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
