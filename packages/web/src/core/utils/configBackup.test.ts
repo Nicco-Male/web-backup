@@ -121,4 +121,26 @@ describe("parseConfigBackupYaml", () => {
     const parsed = parseConfigBackupYaml("not-yaml");
     expect(parsed.errors).toContain("invalidFile");
   });
+
+  it("accepts CLI-like yaml with comments and plain scalars", () => {
+    const parsed = parseConfigBackupYaml(`
+# start of Meshtastic configure yaml
+config:
+  device:
+    role: CLIENT
+module_config:
+  mqtt:
+    enabled: true
+    address: 192.168.10.202
+channels:
+  -
+    index: 0
+    role: PRIMARY
+    settings:
+      psk: AQ==
+`);
+
+    expect(parsed.errors).toEqual([]);
+    expect(parsed.backup?.channels[0]?.index).toBe(0);
+  });
 });

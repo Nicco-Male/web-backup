@@ -143,17 +143,24 @@ const parseScalar = (source: string): unknown => {
     return JSON.parse(source);
   }
 
+  if (source.startsWith("'") && source.endsWith("'")) {
+    return source.slice(1, -1).replace(/''/g, "'");
+  }
+
   if (/^-?\d+(\.\d+)?$/.test(source)) {
     return Number(source);
   }
 
-  throw new Error("invalid scalar");
+  return source;
 };
 
 const parseYamlSubset = (source: string): unknown => {
   const lines = source
     .split(/\r?\n/)
-    .filter((line) => line.trim().length > 0)
+    .filter((line) => {
+      const trimmed = line.trim();
+      return trimmed.length > 0 && !trimmed.startsWith("#");
+    })
     .map((line) => {
       const trimmed = line.trimStart();
       return {
