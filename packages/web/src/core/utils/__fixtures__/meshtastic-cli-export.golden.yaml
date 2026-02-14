@@ -1,0 +1,19 @@
+config:
+  device:
+    role: "CLIENT"
+module_config:
+  telemetry:
+    update_interval: 60
+channels:
+  -
+    index: 0
+    settings:
+      name: "Primary"
+      uplink_enabled: true
+    role: "PRIMARY"
+  -
+    index: 1
+    settings:
+      psk: "AQID"
+      name: "Second"
+    role: "SECONDARY"
