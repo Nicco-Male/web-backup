@@ -247,7 +247,12 @@ export const createConfigBackupYaml = ({
 
   const channelList = Array.from(channels.values())
     .sort((channelA, channelB) => channelA.index - channelB.index)
-    .map((channel) => toCliJson(Protobuf.Channel.ChannelSchema, channel));
+    .map((channel) =>
+      toJson(Protobuf.Channel.ChannelSchema, channel, {
+        enumAsInteger: false,
+        useProtoFieldName: true,
+      }),
+    );
 
   const backup = {
     config: configJson,
