@@ -1,4 +1,4 @@
-import { toJson } from "@bufbuild/protobuf";
+import { fromJson, toJson } from "@bufbuild/protobuf";
 import type { Protobuf } from "@meshtastic/core";
 
 type SerializableValue =
@@ -9,11 +9,7 @@ type SerializableValue =
   | SerializableValue[]
   | { [key: string]: SerializableValue };
 
-export const CONFIG_BACKUP_FORMAT = "meshtastic-web-config-backup-v1";
-
 export interface ConfigBackupPayload {
-  format: string;
-  generatedAt?: string;
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
   channels: Protobuf.Channel.Channel[];
@@ -243,6 +239,12 @@ export const createConfigBackupYaml = ({
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
 }) => {
+  const configJson = toCliJson(Protobuf.LocalOnly.LocalConfigSchema, config);
+  const moduleConfigJson = toCliJson(
+    Protobuf.LocalOnly.LocalModuleConfigSchema,
+    moduleConfig,
+  );
+
   const channelList = Array.from(channels.values())
     .sort((channelA, channelB) => channelA.index - channelB.index)
     .map((channel) =>
@@ -253,14 +255,8 @@ export const createConfigBackupYaml = ({
     );
 
   const backup = {
-    config: toJson(Protobuf.LocalOnly.LocalConfigSchema, config, {
-      enumAsInteger: false,
-      useProtoFieldName: true,
-    }),
-    module_config: toJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig, {
-      enumAsInteger: false,
-      useProtoFieldName: true,
-    }),
+    config: configJson,
+    module_config: moduleConfigJson,
     channels: channelList,
   };
 
@@ -287,25 +283,11 @@ export const parseConfigBackupYaml = (
     return { errors: ["invalidFile"] };
   }
 
-  const parsedConfig = isObject(parsed.config) ? parsed.config : null;
-  const parsedModuleConfig = isObject(parsed.moduleConfig)
-    ? parsed.moduleConfig
-    : isObject(parsed.module_config)
-      ? parsed.module_config
-      : null;
-
-  if (
-    parsed.format !== undefined &&
-    parsed.format !== CONFIG_BACKUP_FORMAT
-  ) {
-    errors.push("unsupportedVersion");
-  }
-
-  if (!parsedConfig) {
+  if (!isObject(parsed.config)) {
     errors.push("missingConfig");
   }
 
-  if (!parsedModuleConfig) {
+  if (!isObject(parsed.module_config)) {
     errors.push("missingModuleConfig");
   }
 
@@ -323,18 +305,42 @@ export const parseConfigBackupYaml = (
     return { errors };
   }
 
-  return {
-    errors: [],
-    backup: {
-      format:
-        typeof parsed.format === "string"
-          ? parsed.format
-          : CONFIG_BACKUP_FORMAT,
-      generatedAt:
-        typeof parsed.generatedAt === "string" ? parsed.generatedAt : undefined,
-      config: parsedConfig as Protobuf.LocalOnly.LocalConfig,
-      moduleConfig: parsedModuleConfig as Protobuf.LocalOnly.LocalModuleConfig,
-      channels: parsed.channels as Protobuf.Channel.Channel[],
-    },
-  };
+  try {
+    const config = fromJson(
+      Protobuf.LocalOnly.LocalConfigSchema,
+      parsed.config,
+      { ignoreUnknownFields: false },
+    );
+    const moduleConfig = fromJson(
+      Protobuf.LocalOnly.LocalModuleConfigSchema,
+      parsed.module_config,
+      { ignoreUnknownFields: false },
+    );
+    const channels = parsed.channels.map((channel) =>
+      fromJson(Protobuf.Channel.ChannelSchema, channel, {
+        ignoreUnknownFields: false,
+      }),
+    );
+
+    return {
+      errors: [],
+      backup: {
+        config,
+        moduleConfig,
+        channels,
+      },
+    };
+  } catch {
+    return { errors: ["invalidFile"] };
+  }
+};
+
+const toCliJson = <T>(schema: Parameters<typeof toJson>[0], message: T) => {
+  return sanitizeForExport(
+    toJson(schema, message, {
+      useProtoFieldName: true,
+      emitDefaultValues: false,
+      enumAsInteger: false,
+    }) as unknown,
+  );
 };
