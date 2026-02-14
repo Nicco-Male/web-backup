@@ -1,5 +1,6 @@
-import { fromJson, toJson } from "@bufbuild/protobuf";
+import { create, fromJson, toBinary, toJson } from "@bufbuild/protobuf";
 import { Protobuf } from "@meshtastic/core";
+import { fromByteArray } from "base64-js";
 
 type SerializableValue =
   | string
@@ -282,14 +283,56 @@ const normalizeCliEncodedBytesForExport = (value: unknown): unknown => {
   return output;
 };
 
+const createChannelUrl = ({
+  channels,
+  loraConfig,
+}: {
+  channels: Map<number, Protobuf.Channel.Channel>;
+  loraConfig?: Protobuf.Config.Config_LoRaConfig;
+}) => {
+  const channelsToEncode = Array.from(channels.values())
+    .sort((a, b) => a.index - b.index)
+    .map((channel) => channel.settings)
+    .filter((channel): channel is Protobuf.Channel.ChannelSettings => !!channel);
+
+  const encoded = create(Protobuf.AppOnly.ChannelSetSchema, {
+    loraConfig,
+    settings: channelsToEncode,
+  });
+  const binary = toBinary(Protobuf.AppOnly.ChannelSetSchema, encoded);
+
+  const base64 = fromByteArray(binary)
+    .replace(/=/g, "")
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_");
+
+  return `https://meshtastic.org/e/#${base64}`;
+};
+
+const toDegrees = (value: number | undefined) => {
+  if (value === undefined || value === 0) {
+    return undefined;
+  }
+
+  return value / 1e7;
+};
+
 export const createConfigBackupYaml = ({
   channels,
   config,
   moduleConfig,
+  owner,
+  ownerShort,
+  location,
+  cannedMessages,
 }: {
   channels: Map<number, Protobuf.Channel.Channel>;
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
+  owner?: string;
+  ownerShort?: string;
+  location?: { lat?: number; lon?: number };
+  cannedMessages?: string[];
 }) => {
   const configJson = normalizeCliEncodedBytesForExport(
     toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config),
@@ -298,26 +341,28 @@ export const createConfigBackupYaml = ({
     toBackupJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig),
   ) as SerializableValue;
 
-  const channelList = Array.from(channels.values())
-    .sort((channelA, channelB) => channelA.index - channelB.index)
-    .map(
-      (channel) =>
-        normalizeCliEncodedBytesForExport(
-          sanitizeForExport(
-            toJson(Protobuf.Channel.ChannelSchema, channel, {
-              enumAsInteger: false,
-              useProtoFieldName: false,
-              emitDefaultValues: true,
-            }) as SerializableValue,
-          ),
-        ) as SerializableValue,
-    );
-
-  const backup = {
+  const backup: Record<string, SerializableValue> = {
+    canned_messages: (cannedMessages ?? []).join("|"),
+    channel_url: createChannelUrl({ channels, loraConfig: config.lora }),
     config: configJson,
-    module_config: moduleConfigJson,
-    channels: channelList,
   };
+
+  if (location?.lat !== undefined && location?.lon !== undefined) {
+    backup.location = {
+      lat: location.lat,
+      lon: location.lon,
+    };
+  }
+
+  backup.module_config = moduleConfigJson;
+
+  if (owner) {
+    backup.owner = owner;
+  }
+
+  if (ownerShort) {
+    backup.owner_short = ownerShort;
+  }
 
   return `# start of Meshtastic configure yaml\n${toYaml(backup)}\n`;
 };
@@ -354,9 +399,13 @@ export const parseConfigBackupYaml = (
     errors.push("missingModuleConfig");
   }
 
-  if (!Array.isArray(parsed.channels)) {
-    errors.push("missingChannels");
+  if (
+    parsed.channels !== undefined &&
+    !Array.isArray(parsed.channels)
+  ) {
+    errors.push("invalidChannels");
   } else if (
+    Array.isArray(parsed.channels) &&
     parsed.channels.some(
       (channel) => !isObject(channel) || typeof channel.index !== "number",
     )
@@ -379,10 +428,14 @@ export const parseConfigBackupYaml = (
       normalizeCliEncodedValues(stripTypeNames(rawModuleConfig)),
       { ignoreUnknownFields: false },
     );
-    const channels = parsed.channels.map((channel) =>
-      fromJson(Protobuf.Channel.ChannelSchema, normalizeCliEncodedValues(stripTypeNames(channel)), {
-        ignoreUnknownFields: false,
-      }),
+    const channels = (Array.isArray(parsed.channels) ? parsed.channels : []).map((channel) =>
+      fromJson(
+        Protobuf.Channel.ChannelSchema,
+        normalizeCliEncodedValues(stripTypeNames(channel)),
+        {
+          ignoreUnknownFields: false,
+        },
+      ),
     );
 
     return {
@@ -447,4 +500,21 @@ const toBackupJson = <T>(schema: Parameters<typeof toJson>[0], message: T) => {
       enumAsInteger: false,
     }) as unknown,
   );
+};
+
+export const getLocationFromNode = (
+  node?: Protobuf.Mesh.NodeInfo,
+): { lat?: number; lon?: number } | undefined => {
+  if (!node?.position) {
+    return undefined;
+  }
+
+  const lat = toDegrees(node.position.latitudeI);
+  const lon = toDegrees(node.position.longitudeI);
+
+  if (lat === undefined || lon === undefined) {
+    return undefined;
+  }
+
+  return { lat, lon };
 };
