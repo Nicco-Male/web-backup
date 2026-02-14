@@ -4,6 +4,7 @@ import {
   decodeMeshtasticChannelSetUrl,
 } from "@core/utils/channelUrl.ts";
 import { Protobuf } from "@meshtastic/core";
+import { parse, stringify } from "yaml";
 
 type SerializableValue =
   | string
@@ -89,187 +90,6 @@ const sanitizeForExport = (value: unknown): SerializableValue => {
   }
 };
 
-const quoteScalar = (value: string) => JSON.stringify(value);
-
-const isPlainYamlString = (value: string): boolean => {
-  if (!value.length || value !== value.trim()) {
-    return false;
-  }
-
-  if (value === "true" || value === "false" || value === "null") {
-    return false;
-  }
-
-  if (/^-?\d+(\.\d+)?$/.test(value)) {
-    return false;
-  }
-
-  return !/[:\[\]{}#,]|^[-?!&*%@`|>]/.test(value);
-};
-
-const yamlScalar = (value: SerializableValue): string => {
-  if (value === null) {
-    return "null";
-  }
-
-  if (typeof value === "string") {
-    return isPlainYamlString(value) ? value : quoteScalar(value);
-  }
-
-  return String(value);
-};
-
-const toYaml = (value: SerializableValue, indent = 0): string => {
-  const prefix = " ".repeat(indent);
-
-  if (Array.isArray(value)) {
-    if (value.length === 0) {
-      return "[]";
-    }
-
-    return value
-      .map((entry) => {
-        if (entry !== null && typeof entry === "object") {
-          return `${prefix}-\n${toYaml(entry, indent + 2)}`;
-        }
-
-        return `${prefix}- ${yamlScalar(entry)}`;
-      })
-      .join("\n");
-  }
-
-  if (value !== null && typeof value === "object") {
-    const entries = Object.entries(value);
-
-    if (entries.length === 0) {
-      return "{}";
-    }
-
-    return entries
-      .map(([key, entryValue]) => {
-        if (entryValue !== null && typeof entryValue === "object") {
-          return `${prefix}${key}:\n${toYaml(entryValue, indent + 2)}`;
-        }
-
-        return `${prefix}${key}: ${yamlScalar(entryValue)}`;
-      })
-      .join("\n");
-  }
-
-  return `${prefix}${yamlScalar(value)}`;
-};
-
-const parseScalar = (source: string): unknown => {
-  if (source === "null") {
-    return null;
-  }
-
-  if (source === "true") {
-    return true;
-  }
-
-  if (source === "false") {
-    return false;
-  }
-
-  if (source.startsWith('"') && source.endsWith('"')) {
-    return JSON.parse(source);
-  }
-
-  if (source.startsWith("'") && source.endsWith("'")) {
-    return source.slice(1, -1).replace(/''/g, "'");
-  }
-
-  if (/^-?\d+(\.\d+)?$/.test(source)) {
-    return Number(source);
-  }
-
-  return source;
-};
-
-const parseYamlSubset = (source: string): unknown => {
-  const lines = source
-    .split(/\r?\n/)
-    .filter((line) => {
-      const trimmed = line.trim();
-      return trimmed.length > 0 && !trimmed.startsWith("#");
-    })
-    .map((line) => {
-      const trimmed = line.trimStart();
-      return {
-        indent: line.length - trimmed.length,
-        text: trimmed,
-      };
-    });
-
-  let index = 0;
-
-  const parseAtIndent = (indent: number): unknown => {
-    if (index >= lines.length) {
-      return null;
-    }
-
-    if (lines[index].indent < indent) {
-      return null;
-    }
-
-    if (lines[index].text.startsWith("-")) {
-      const array: unknown[] = [];
-      while (index < lines.length && lines[index].indent === indent) {
-        const line = lines[index];
-        if (!line.text.startsWith("-")) {
-          break;
-        }
-
-        if (line.text === "-") {
-          index += 1;
-          array.push(parseAtIndent(indent + 2));
-          continue;
-        }
-
-        const scalar = line.text.slice(1).trim();
-        if (!scalar.length) {
-          throw new Error("invalid array entry");
-        }
-
-        array.push(parseScalar(scalar));
-        index += 1;
-      }
-      return array;
-    }
-
-    const obj: Record<string, unknown> = {};
-    while (index < lines.length && lines[index].indent === indent) {
-      const line = lines[index];
-      if (line.text.startsWith("-")) {
-        break;
-      }
-
-      const separatorIndex = line.text.indexOf(":");
-      if (separatorIndex < 0) {
-        throw new Error("invalid object entry");
-      }
-
-      const key = line.text.slice(0, separatorIndex).trim();
-      const rest = line.text.slice(separatorIndex + 1).trim();
-      index += 1;
-
-      if (rest.length === 0) {
-        obj[key] = parseAtIndent(indent + 2);
-      } else if (rest === "{}") {
-        obj[key] = {};
-      } else if (rest === "[]") {
-        obj[key] = [];
-      } else {
-        obj[key] = parseScalar(rest);
-      }
-    }
-    return obj;
-  };
-
-  return parseAtIndent(0);
-};
-
 const CLI_BASE64_KEYS = new Set(["psk", "publicKey", "privateKey", "adminKey"]);
 
 const normalizeCliEncodedBytesForExport = (value: unknown): unknown => {
@@ -332,7 +152,9 @@ export const createConfigBackupYaml = ({
     channels: channelList,
   };
 
-  return `# start of Meshtastic configure yaml\n${toYaml(backup)}\n`;
+  return `# start of Meshtastic configure yaml\n${stringify(backup, {
+    indent: 2,
+  })}`;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
@@ -346,7 +168,7 @@ export const parseConfigBackupYaml = (
 
   let parsed: unknown;
   try {
-    parsed = parseYamlSubset(source);
+    parsed = parse(source);
   } catch {
     return { errors: ["invalidFile"] };
   }

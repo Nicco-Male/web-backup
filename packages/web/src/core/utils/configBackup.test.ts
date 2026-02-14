@@ -79,9 +79,18 @@ describe("createConfigBackupYaml", () => {
   it("uses CLI-compatible base64 encoding for bytes", () => {
     const yaml = createConfigBackupYaml(createSamplePayload());
 
-    expect(yaml).toContain('psk: "base64:AQID"');
+    expect(yaml).toContain("psk: base64:AQID");
     expect(yaml).not.toContain(": undefined");
     expect(yaml).not.toContain("$typeName");
+  });
+
+  it("serializes with 2-space indentation and deterministic sections", () => {
+    const yaml = createConfigBackupYaml(createSamplePayload());
+
+    expect(yaml).toContain("\n  device:\n");
+    expect(yaml).toContain("\n  telemetry:\n");
+    expect(yaml).toContain("\n  - index: 0\n");
+    expect(yaml).toContain("\n  - index: 1\n");
   });
 });
 
@@ -118,29 +127,35 @@ describe("parseConfigBackupYaml", () => {
     expect(parsed.backup?.channels.length).toBe(1);
   });
 
-
-  it("accepts CLI base64: prefixed secret values", () => {
+  it("accepts CLI-like yaml with comments, special strings, empty arrays, and base64 values", () => {
     const parsed = parseConfigBackupYaml(`
+# start of Meshtastic configure yaml
 config:
   security:
-    public_key: base64:r7O4pSccIMGXCUlCJFJUfxlUtvnNF2+nyADtGj8i9C8=
+    public_key: "base64:r7O4pSccIMGXCUlCJFJUfxlUtvnNF2+nyADtGj8i9C8="
     private_key: base64:IKhkOAphNZr4U948HkKx+J09hK7BHCAFvvQVICwBkEc=
 module_config:
-  telemetry:
-    update_interval: 60
+  mqtt:
+    enabled: true
+    address: "192.168.10.202:1883"
+    root: "node/#42?test=true"
+  external_notification:
+    enabled_alert_bell: []
 channels:
-  -
-    index: 0
+  - index: 0
+    role: PRIMARY
     settings:
+      name: "Primary #1"
       psk: base64:AQ==
 `);
 
     expect(parsed.errors).toEqual([]);
     expect(parsed.backup?.channels[0]?.settings.psk).toEqual(new Uint8Array([1]));
+    expect(parsed.backup?.moduleConfig.mqtt?.address).toBe("192.168.10.202:1883");
   });
 
   it("returns error for malformed yaml", () => {
-    const parsed = parseConfigBackupYaml("not-yaml");
+    const parsed = parseConfigBackupYaml("config:\n  - invalid");
     expect(parsed.errors).toContain("invalidFile");
   });
 
