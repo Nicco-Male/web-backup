@@ -5,7 +5,8 @@
     "broadcastLabel": "Principale",
     "channelIndex": "Ch {{index}}",
     "import": "Importa",
-    "export": "Esporta"
+    "export": "Esporta",
+    "backup": "Backup configurazione"
   },
   "validation": {
     "pskInvalid": "Per favore inserisci un PSK valido di {{bits}} bit."

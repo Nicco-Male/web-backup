@@ -8,10 +8,11 @@ import {
   TabsTrigger,
 } from "@components/UI/Tabs.tsx";
 import { useDevice } from "@core/stores";
+import { createConfigBackupYaml } from "@core/utils/configBackup.ts";
 import type { Protobuf } from "@meshtastic/core";
 import i18next from "i18next";
-import { QrCodeIcon, UploadIcon } from "lucide-react";
-import { Suspense, useMemo } from "react";
+import { DownloadIcon, QrCodeIcon, UploadIcon } from "lucide-react";
+import { Suspense, useCallback, useMemo } from "react";
 import type { UseFormReturn } from "react-hook-form";
 import { useTranslation } from "react-i18next";
 
@@ -31,10 +32,37 @@ export const getChannelName = (channel: Protobuf.Channel.Channel) => {
 };
 
 export const Channels = ({ onFormInit }: ConfigProps) => {
-  const { channels, hasChannelChange, setDialogOpen } = useDevice();
+  const { channels, config, moduleConfig, hasChannelChange, setDialogOpen } =
+    useDevice();
   const { t } = useTranslation("channels");
 
   const allChannels = Array.from(channels.values());
+
+  const downloadConfigBackup = useCallback(() => {
+    const backupYaml = createConfigBackupYaml({
+      channels,
+      config,
+      moduleConfig,
+    });
+
+    const now = new Date().toISOString().replace(/[:.]/g, "-");
+    const fileName = `meshtastic_config_backup_${now}.yaml`;
+
+    const blob = new Blob([backupYaml], { type: "application/x-yaml" });
+    const url = URL.createObjectURL(blob);
+
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = fileName;
+    link.style.display = "none";
+
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    URL.revokeObjectURL(url);
+  }, [channels, config, moduleConfig]);
+
   const flags = useMemo(
     () =>
       new Map(
@@ -74,6 +102,10 @@ export const Channels = ({ onFormInit }: ConfigProps) => {
         <Button className=" h-8" onClick={() => setDialogOpen("QR", true)}>
           <QrCodeIcon className="mr-2" size={14} />
           {t("page.export")}
+        </Button>
+        <Button className="h-8" onClick={downloadConfigBackup}>
+          <DownloadIcon className="mr-2" size={14} />
+          {t("page.backup")}
         </Button>
       </TabsList>
       {allChannels.map((channel) => (
