@@ -5,7 +5,8 @@
     "broadcastLabel": "Primär",
     "channelIndex": "# {{index}}",
     "import": "Importera",
-    "export": "Exportera"
+    "export": "Exportera",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Ange en giltig {{bits}}-bitars PSK."

@@ -5,7 +5,8 @@
     "broadcastLabel": "Birincil",
     "channelIndex": "Ch {{index}}",
     "import": "İçeri aktar",
-    "export": "Dışa Aktar"
+    "export": "Dışa Aktar",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Lütfen geçerli bir {{bits}} bit PSK girin."

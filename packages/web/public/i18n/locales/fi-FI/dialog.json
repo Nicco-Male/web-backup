@@ -234,5 +234,11 @@
     "description": "Tämä palauttaa yhdistetyn laitteen asetukset tehdasasetuksiin ja poistaa kaikki laitteen nykyiset asetukset. Tätä toimintoa ei voi perua. Haluatko varmasti jatkaa?",
     "confirm": "Tehdasasetusten palautusasetukset",
     "failedTitle": "Tehdasasetusten palauttamisessa tapahtui virhe. Yritä uudelleen."
+  },
+  "backupRestoreConfirm": {
+    "title": "Applicare il ripristino?",
+    "description": "Le differenze rilevate verranno aggiunte alla coda modifiche. Dovrai premere Salva per inviarle al dispositivo.",
+    "confirm": "Conferma ripristino",
+    "cancel": "Annulla"
   }
 }

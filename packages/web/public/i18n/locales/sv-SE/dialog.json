@@ -234,5 +234,11 @@
     "description": "Detta kommer fabriksåterställa konfigurationen på den anslutna enheten och radera alla inställningar på enheten. Detta kan inte ångras. Är du säker på att du vill fortsätta?",
     "confirm": "Fabriksåterställ konfigurationen",
     "failedTitle": "Det gick inte att utföra fabriksåterställningen. Försök igen."
+  },
+  "backupRestoreConfirm": {
+    "title": "Applicare il ripristino?",
+    "description": "Le differenze rilevate verranno aggiunte alla coda modifiche. Dovrai premere Salva per inviarle al dispositivo.",
+    "confirm": "Conferma ripristino",
+    "cancel": "Annulla"
   }
 }

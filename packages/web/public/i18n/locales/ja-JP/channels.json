@@ -5,7 +5,8 @@
     "broadcastLabel": "プライマリ",
     "channelIndex": "Ch {{index}}",
     "import": "インポート",
-    "export": "Export"
+    "export": "Export",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Please enter a valid {{bits}} bit PSK."

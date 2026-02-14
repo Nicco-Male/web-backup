@@ -5,7 +5,8 @@
     "broadcastLabel": "Primární",
     "channelIndex": "K {{index}}",
     "import": "Import",
-    "export": "Export"
+    "export": "Export",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Prosím zadejte platný {{bits}} bit PSK."

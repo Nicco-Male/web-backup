@@ -234,5 +234,11 @@
     "description": "This will factory reset the configuration on the connected device, erasing all configurations on the device. This cannot be undone. Are you sure you want to continue?",
     "confirm": "Фабрично нулиране на конфигурацията",
     "failedTitle": "There was an error performing the factory reset. Please try again."
+  },
+  "backupRestoreConfirm": {
+    "title": "Applicare il ripristino?",
+    "description": "Le differenze rilevate verranno aggiunte alla coda modifiche. Dovrai premere Salva per inviarle al dispositivo.",
+    "confirm": "Conferma ripristino",
+    "cancel": "Annulla"
   }
 }

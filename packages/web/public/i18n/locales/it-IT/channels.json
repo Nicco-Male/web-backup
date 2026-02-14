@@ -6,7 +6,7 @@
     "channelIndex": "Ch {{index}}",
     "import": "Importa",
     "export": "Esporta",
-    "backup": "Backup configurazione"
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Per favore inserisci un PSK valido di {{bits}} bit."

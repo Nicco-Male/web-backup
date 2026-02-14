@@ -5,7 +5,8 @@
     "broadcastLabel": "Първичен",
     "channelIndex": "К {{index}}",
     "import": "Импортиране",
-    "export": "Експортиране"
+    "export": "Експортиране",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Моля, въведете валиден {{bits}} bit PSK."

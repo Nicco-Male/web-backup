@@ -5,7 +5,8 @@
     "broadcastLabel": "Podstawowy",
     "channelIndex": "Kan. {{index}}",
     "import": "Import",
-    "export": "Eksport"
+    "export": "Eksport",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Musisz wprowadzić prawidłowy {{bits}} bitowy klucz."

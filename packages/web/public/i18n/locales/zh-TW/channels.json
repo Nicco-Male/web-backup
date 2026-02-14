@@ -5,7 +5,8 @@
     "broadcastLabel": "主要",
     "channelIndex": "頻道 {{index}}",
     "import": "匯入",
-    "export": "匯出"
+    "export": "匯出",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "23公里以內"

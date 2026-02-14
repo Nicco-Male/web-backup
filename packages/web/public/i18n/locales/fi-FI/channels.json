@@ -5,7 +5,8 @@
     "broadcastLabel": "Ensisijainen",
     "channelIndex": "Ch {{index}}",
     "import": "Tuo",
-    "export": "Vie"
+    "export": "Vie",
+    "backup": "Backup YAML"
   },
   "validation": {
     "pskInvalid": "Syötä kelvollinen {{bits}} bittinen PSK."
