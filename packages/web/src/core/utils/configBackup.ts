@@ -245,13 +245,22 @@ export const createConfigBackupYaml = ({
 }) => {
   const channelList = Array.from(channels.values())
     .sort((channelA, channelB) => channelA.index - channelB.index)
-    .map((channel) => toCliJson(Protobuf.Channel.ChannelSchema, channel));
+    .map((channel) =>
+      toJson(Protobuf.Channel.ChannelSchema, channel, {
+        enumAsInteger: false,
+        useProtoFieldName: true,
+      }),
+    );
 
   const backup = {
-    generatedAt: new Date().toISOString(),
-    format: CONFIG_BACKUP_FORMAT,
-    config,
-    moduleConfig,
+    config: toJson(Protobuf.LocalOnly.LocalConfigSchema, config, {
+      enumAsInteger: false,
+      useProtoFieldName: true,
+    }),
+    module_config: toJson(Protobuf.LocalOnly.LocalModuleConfigSchema, moduleConfig, {
+      enumAsInteger: false,
+      useProtoFieldName: true,
+    }),
     channels: channelList,
   };
 
@@ -278,15 +287,25 @@ export const parseConfigBackupYaml = (
     return { errors: ["invalidFile"] };
   }
 
-  if (parsed.format !== CONFIG_BACKUP_FORMAT) {
+  const parsedConfig = isObject(parsed.config) ? parsed.config : null;
+  const parsedModuleConfig = isObject(parsed.moduleConfig)
+    ? parsed.moduleConfig
+    : isObject(parsed.module_config)
+      ? parsed.module_config
+      : null;
+
+  if (
+    parsed.format !== undefined &&
+    parsed.format !== CONFIG_BACKUP_FORMAT
+  ) {
     errors.push("unsupportedVersion");
   }
 
-  if (!isObject(parsed.config)) {
+  if (!parsedConfig) {
     errors.push("missingConfig");
   }
 
-  if (!isObject(parsed.moduleConfig)) {
+  if (!parsedModuleConfig) {
     errors.push("missingModuleConfig");
   }
 
@@ -306,6 +325,16 @@ export const parseConfigBackupYaml = (
 
   return {
     errors: [],
-    backup: parsed as ConfigBackupPayload,
+    backup: {
+      format:
+        typeof parsed.format === "string"
+          ? parsed.format
+          : CONFIG_BACKUP_FORMAT,
+      generatedAt:
+        typeof parsed.generatedAt === "string" ? parsed.generatedAt : undefined,
+      config: parsedConfig as Protobuf.LocalOnly.LocalConfig,
+      moduleConfig: parsedModuleConfig as Protobuf.LocalOnly.LocalModuleConfig,
+      channels: parsed.channels as Protobuf.Channel.Channel[],
+    },
   };
 };
