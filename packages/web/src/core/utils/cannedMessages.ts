@@ -3,15 +3,12 @@ import type { MeshDevice } from "@meshtastic/core";
 import { Protobuf } from "@meshtastic/core";
 
 const DEFAULT_TIMEOUT_MS = 3000;
+const DEFAULT_RETRIES = 1;
 
-export const fetchCannedMessages = async (
-  connection: MeshDevice | undefined,
-  timeoutMs = DEFAULT_TIMEOUT_MS,
+const requestCannedMessagesOnce = async (
+  connection: MeshDevice,
+  timeoutMs: number,
 ): Promise<string> => {
-  if (!connection) {
-    return "";
-  }
-
   return new Promise((resolve) => {
     let resolved = false;
 
@@ -53,4 +50,22 @@ export const fetchCannedMessages = async (
         finish("");
       });
   });
+};
+
+export const fetchCannedMessages = async (
+  connection: MeshDevice | undefined,
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<string> => {
+  if (!connection) {
+    return "";
+  }
+
+  for (let attempt = 0; attempt <= DEFAULT_RETRIES; attempt += 1) {
+    const response = await requestCannedMessagesOnce(connection, timeoutMs);
+    if (response.length > 0) {
+      return response;
+    }
+  }
+
+  return "";
 };

@@ -1,6 +1,6 @@
-import { create, fromJson, toBinary, toJson } from "@bufbuild/protobuf";
+import { create, fromBinary, fromJson, toBinary, toJson } from "@bufbuild/protobuf";
 import { Protobuf } from "@meshtastic/core";
-import { fromByteArray } from "base64-js";
+import { fromByteArray, toByteArray } from "base64-js";
 
 type SerializableValue =
   | string
@@ -16,6 +16,9 @@ export interface ConfigBackupPayload {
   config: Protobuf.LocalOnly.LocalConfig;
   moduleConfig: Protobuf.LocalOnly.LocalModuleConfig;
   channels: Protobuf.Channel.Channel[];
+  owner?: string;
+  ownerShort?: string;
+  cannedMessages?: string;
 }
 
 export interface ConfigBackupValidationResult {
@@ -364,6 +367,39 @@ const parseYamlSubset = (source: string): unknown => {
   return parseAtIndent(0);
 };
 
+const decodeChannelUrl = (channelUrl: string): Protobuf.Channel.Channel[] => {
+  const parsedUrl = new URL(channelUrl);
+  const encodedChannelConfig = parsedUrl.hash.substring(1);
+
+  if (!encodedChannelConfig) {
+    return [];
+  }
+
+  const paddedString = encodedChannelConfig
+    .padEnd(
+      encodedChannelConfig.length + ((4 - (encodedChannelConfig.length % 4)) % 4),
+      "=",
+    )
+    .replace(/-/g, "+")
+    .replace(/_/g, "/");
+
+  const channelSet = fromBinary(
+    Protobuf.AppOnly.ChannelSetSchema,
+    toByteArray(paddedString),
+  );
+
+  return channelSet.settings.map((settings, index) =>
+    create(Protobuf.Channel.ChannelSchema, {
+      index,
+      role:
+        index === 0
+          ? Protobuf.Channel.Channel_Role.PRIMARY
+          : Protobuf.Channel.Channel_Role.SECONDARY,
+      settings,
+    }),
+  );
+};
+
 const CLI_BASE64_KEYS = new Set(["psk", "publicKey", "privateKey", "adminKey"]);
 
 const ensureBase64Prefix = (value: string): string => {
@@ -637,6 +673,31 @@ export const parseConfigBackupYaml = (
     return { errors: ["invalidFile"] };
   }
 
+  const owner =
+    typeof parsed.owner === "string"
+      ? parsed.owner
+      : typeof parsed.ownerLong === "string"
+        ? parsed.ownerLong
+        : undefined;
+  const ownerShort =
+    typeof parsed.owner_short === "string"
+      ? parsed.owner_short
+      : typeof parsed.ownerShort === "string"
+        ? parsed.ownerShort
+        : undefined;
+  const cannedMessages =
+    typeof parsed.canned_messages === "string"
+      ? parsed.canned_messages
+      : typeof parsed.cannedMessages === "string"
+        ? parsed.cannedMessages
+        : undefined;
+  const channelUrl =
+    typeof parsed.channel_url === "string"
+      ? parsed.channel_url
+      : typeof parsed.channelUrl === "string"
+        ? parsed.channelUrl
+        : undefined;
+
   if (!isObject(parsed.config)) {
     errors.push("missingConfig");
   }
@@ -649,14 +710,13 @@ export const parseConfigBackupYaml = (
     errors.push("missingModuleConfig");
   }
 
-  if (
-    parsed.channels !== undefined &&
-    !Array.isArray(parsed.channels)
-  ) {
+  const rawChannels = parsed.channels;
+
+  if (rawChannels !== undefined && !Array.isArray(rawChannels)) {
     errors.push("invalidChannels");
   } else if (
-    Array.isArray(parsed.channels) &&
-    parsed.channels.some(
+    Array.isArray(rawChannels) &&
+    rawChannels.some(
       (channel) => !isObject(channel) || typeof channel.index !== "number",
     )
   ) {
@@ -678,15 +738,23 @@ export const parseConfigBackupYaml = (
       normalizeCliEncodedValues(stripTypeNames(rawModuleConfig)),
       { ignoreUnknownFields: false },
     );
-    const channels = (Array.isArray(parsed.channels) ? parsed.channels : []).map((channel) =>
-      fromJson(
-        Protobuf.Channel.ChannelSchema,
-        normalizeCliEncodedValues(stripTypeNames(channel)),
-        {
-          ignoreUnknownFields: false,
-        },
-      ),
+    const channelsFromList = (Array.isArray(rawChannels) ? rawChannels : []).map(
+      (channel) =>
+        fromJson(
+          Protobuf.Channel.ChannelSchema,
+          normalizeCliEncodedValues(stripTypeNames(channel)),
+          {
+            ignoreUnknownFields: false,
+          },
+        ),
     );
+
+    const channels =
+      channelsFromList.length > 0
+        ? channelsFromList
+        : channelUrl
+          ? decodeChannelUrl(channelUrl)
+          : [];
 
     return {
       errors: [],
@@ -694,6 +762,9 @@ export const parseConfigBackupYaml = (
         config,
         moduleConfig,
         channels,
+        owner,
+        ownerShort,
+        cannedMessages,
       },
     };
   } catch {
