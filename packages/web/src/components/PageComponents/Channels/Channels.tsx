@@ -10,6 +10,7 @@ import {
 import { useDevice, useNodeDB } from "@core/stores";
 import {
   createConfigBackupYaml,
+  fetchCannedMessages,
   getLocationFromNode,
 } from "@core/utils/configBackup.ts";
 import type { Protobuf } from "@meshtastic/core";
@@ -36,15 +37,16 @@ export const getChannelName = (channel: Protobuf.Channel.Channel) => {
 };
 
 export const Channels = ({ onFormInit }: ConfigProps) => {
-  const { channels, config, moduleConfig, hasChannelChange, setDialogOpen } =
+  const { channels, config, moduleConfig, hasChannelChange, setDialogOpen, connection } =
     useDevice();
   const { getMyNode } = useNodeDB();
   const { t } = useTranslation("channels");
 
   const allChannels = Array.from(channels.values());
 
-  const downloadConfigBackup = useCallback(() => {
+  const downloadConfigBackup = useCallback(async () => {
     const myNode = getMyNode();
+    const cannedMessages = await fetchCannedMessages(connection);
     const backupYaml = createConfigBackupYaml({
       channels,
       config,
@@ -52,6 +54,7 @@ export const Channels = ({ onFormInit }: ConfigProps) => {
       owner: myNode?.user?.longName,
       ownerShort: myNode?.user?.shortName,
       location: getLocationFromNode(myNode),
+      cannedMessages,
     });
 
     const now = new Date().toISOString().replace(/[:.]/g, "-");
@@ -70,7 +73,7 @@ export const Channels = ({ onFormInit }: ConfigProps) => {
     document.body.removeChild(link);
 
     URL.revokeObjectURL(url);
-  }, [channels, config, moduleConfig, getMyNode]);
+  }, [channels, config, moduleConfig, connection, getMyNode]);
 
   const flags = useMemo(
     () =>
