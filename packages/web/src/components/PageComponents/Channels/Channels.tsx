@@ -10,6 +10,7 @@ import {
 import { useDevice, useNodeDB } from "@core/stores";
 import { fetchCannedMessages } from "@core/utils/cannedMessages.ts";
 import {
+  createConfigBackupFileName,
   createConfigBackupYaml,
   getLocationFromNode,
 } from "@core/utils/configBackup.ts";
@@ -63,8 +64,9 @@ export const Channels = ({ onFormInit }: ConfigProps) => {
       cannedMessages,
     });
 
-    const now = new Date().toISOString().replace(/[:.]/g, "-");
-    const fileName = `meshtastic_config_backup_${now}.yaml`;
+    const fileName = createConfigBackupFileName({
+      ownerLongName: myNode?.user?.longName,
+    });
 
     const blob = new Blob([backupYaml], { type: "application/x-yaml" });
     const url = URL.createObjectURL(blob);

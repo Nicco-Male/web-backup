@@ -14,6 +14,7 @@ import { useToast } from "@core/hooks/useToast.ts";
 import { useDevice, useNodeDB } from "@core/stores";
 import { fetchCannedMessages } from "@core/utils/cannedMessages.ts";
 import {
+  createConfigBackupFileName,
   createConfigBackupYaml,
   getLocationFromNode,
   parseConfigBackupYaml,
@@ -78,8 +79,9 @@ export const BackupRestoreConfig = () => {
       cannedMessages,
     });
 
-    const now = new Date().toISOString().replace(/[:.]/g, "-");
-    const fileName = `meshtastic_config_backup_${now}.yaml`;
+    const fileName = createConfigBackupFileName({
+      ownerLongName: myNode?.user?.longName,
+    });
 
     const blob = new Blob([backupYaml], { type: "application/x-yaml" });
     const url = URL.createObjectURL(blob);

@@ -23,6 +23,34 @@ export interface ConfigBackupValidationResult {
   errors: string[];
 }
 
+const INVALID_FILE_NAME_CHARS = /[<>:"/\\|?*\u0000-\u001f]/g;
+
+const sanitizeFileNameSegment = (value: string): string => {
+  return value
+    .trim()
+    .replace(/\s+/g, "_")
+    .replace(INVALID_FILE_NAME_CHARS, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_+|_+$/g, "");
+};
+
+export const createConfigBackupFileName = ({
+  ownerLongName,
+  now = new Date(),
+}: {
+  ownerLongName?: string;
+  now?: Date;
+}) => {
+  const timestamp = now.toISOString().replace(/[:.]/g, "-");
+  const ownerSegment = ownerLongName
+    ? sanitizeFileNameSegment(ownerLongName)
+    : "";
+
+  return ownerSegment
+    ? `meshtastic_config_backup_${ownerSegment}_${timestamp}.yaml`
+    : `meshtastic_config_backup_${timestamp}.yaml`;
+};
+
 const sanitizeForExport = (value: unknown): SerializableValue => {
   if (value === null) {
     return null;

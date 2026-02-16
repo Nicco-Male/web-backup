@@ -1,7 +1,32 @@
 import { create } from "@bufbuild/protobuf";
 import { Protobuf } from "@meshtastic/core";
 import { describe, expect, it } from "vitest";
-import { createConfigBackupYaml, parseConfigBackupYaml } from "./configBackup.ts";
+import {
+  createConfigBackupFileName,
+  createConfigBackupYaml,
+  parseConfigBackupYaml,
+} from "./configBackup.ts";
+
+describe("createConfigBackupFileName", () => {
+  it("includes sanitized long name in the file name", () => {
+    const fileName = createConfigBackupFileName({
+      ownerLongName: "Node Long Name / Test",
+      now: new Date("2026-02-16T15:51:34.580Z"),
+    });
+
+    expect(fileName).toBe(
+      "meshtastic_config_backup_Node_Long_Name_Test_2026-02-16T15-51-34-580Z.yaml",
+    );
+  });
+
+  it("falls back to timestamp-only file name when no long name exists", () => {
+    const fileName = createConfigBackupFileName({
+      now: new Date("2026-02-16T15:51:34.580Z"),
+    });
+
+    expect(fileName).toBe("meshtastic_config_backup_2026-02-16T15-51-34-580Z.yaml");
+  });
+});
 
 describe("createConfigBackupYaml", () => {
   const createSamplePayload = () => {
