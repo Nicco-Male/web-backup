@@ -35,12 +35,6 @@ export default defineConfig(({ mode }) => {
   const isTest = env.VITE_IS_TEST;
   const useHTTPS = env.VITE_USE_HTTPS === "true";
 
-  const defaultAllowedHosts = ["backmsh.niccomale.it"];
-  const extraAllowedHosts = (env.VITE_ALLOWED_HOSTS ?? "")
-    .split(",")
-    .map((host) => host.trim())
-    .filter(Boolean);
-
   return {
     plugins: [
       react(),
@@ -86,7 +80,7 @@ export default defineConfig(({ mode }) => {
       host: true,
       port: 3000,
       strictPort: true,
-      allowedHosts: [...new Set([...defaultAllowedHosts, ...extraAllowedHosts])],
+      allowedHosts: ["backmsh.niccomale.it"],
       headers: {
         "Content-Security-Policy": CONTENT_SECURITY_POLICY,
         "Cross-Origin-Opener-Policy": "same-origin",

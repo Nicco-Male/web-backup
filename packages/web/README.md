@@ -128,24 +128,6 @@ Start the development server:
 pnpm run dev
 ```
 
-### Public instance note (security)
-
-For publicly exposed deployments, do **not** run `vite dev`.
-Always serve static build artifacts generated with:
-
-```bash
-pnpm run build
-```
-
-Use `vite dev` only for local development/debugging.
-When temporary remote debugging is required, keep the host whitelist strict and extend it via environment variable instead of editing `vite.config.ts` manually:
-
-```bash
-VITE_ALLOWED_HOSTS="backmsh.niccomale.it,203.0.113.10,debug.example.com" pnpm run dev
-```
-
-`VITE_ALLOWED_HOSTS` accepts a comma-separated list of additional hosts/IPs that are appended to the default allowlist.
-
 ### Building and Packaging
 
 Build the project:
