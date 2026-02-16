@@ -40,13 +40,11 @@ export function createConnectionFromInput(input: NewConnection): Connection {
   };
 }
 
-export async function testHttpReachable(
-  url: string,
-  timeoutMs = 2500,
-): Promise<boolean> {
+async function probeUrl(url: string, timeoutMs: number): Promise<boolean> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
     // Use no-cors to avoid CORS failure; opaque responses resolve but status is 0
     await fetch(url, {
       method: "GET",
@@ -54,11 +52,24 @@ export async function testHttpReachable(
       cache: "no-store",
       signal: controller.signal,
     });
-    clearTimeout(timer);
     return true;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+export async function testHttpReachable(
+  url: string,
+  timeoutMs = 2500,
+): Promise<boolean> {
+  if (await probeUrl(url, timeoutMs)) {
+    return true;
+  }
+
+  const fallbackUrl = new URL("/api/v1/toradio", url).toString();
+  return probeUrl(fallbackUrl, timeoutMs);
 }
 
 export function connectionTypeIcon(type: ConnectionType): LucideIcon {
