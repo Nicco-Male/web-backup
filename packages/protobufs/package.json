@@ -6,16 +6,17 @@
   "description": "Workspace package for Meshtastic protobuf stubs (local dev only). This package is published to the JSR registry separately.",
   "license": "GPL-3.0-only",
   "files": [
-    "./packages/ts/dist/"
+    "./packages/ts/dist/",
+    "./packages/ts/mod.ts"
   ],
   "exports": {
     ".": {
-      "types": "./packages/ts/dist/mod.d.ts",
-      "default": "./packages/ts/dist/mod.js"
+      "types": "./packages/ts/mod.ts",
+      "default": "./packages/ts/mod.ts"
     },
     "./*": "./packages/ts/dist/*"
   },
-  "types": "./packages/ts/dist/mod.d.ts",
+  "types": "./packages/ts/mod.ts",
   "sideEffects": false,
   "scripts": {
     "gen": "buf generate",
@@ -24,7 +25,7 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@bufbuild/protoc-gen-es": "^1.9.0",
+    "@bufbuild/protoc-gen-es": "^2.9.0",
     "rimraf": "^6.0.0"
   }
 }
