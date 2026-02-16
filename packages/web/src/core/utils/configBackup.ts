@@ -1,5 +1,5 @@
 import { create, fromJson, toBinary, toJson } from "@bufbuild/protobuf";
-import { type MeshDevice, Protobuf } from "@meshtastic/core";
+import { Protobuf } from "@meshtastic/core";
 import { fromByteArray } from "base64-js";
 
 type SerializableValue =
@@ -442,7 +442,7 @@ export const createConfigBackupYaml = ({
   owner?: string;
   ownerShort?: string;
   location?: { lat?: number; lon?: number };
-  cannedMessages?: string;
+  cannedMessages?: string[];
 }) => {
   const configJson = normalizeCliEncodedBytesForExport(
     toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config),
@@ -553,7 +553,7 @@ export const createConfigBackupYaml = ({
   };
 
   const backup = pruneEmpty({
-    canned_messages: cannedMessages ?? "",
+    canned_messages: (cannedMessages ?? []).join("|"),
     channel_url: createChannelUrl({ channels, loraConfig: config.lora }),
     config: orderedConfig,
     location:
@@ -583,60 +583,6 @@ ${toYaml(backup ?? {})}
   );
 
   return yaml;
-};
-
-export const fetchCannedMessages = async (
-  connection: MeshDevice | undefined,
-  timeoutMs = 3000,
-): Promise<string> => {
-  if (!connection) {
-    return "";
-  }
-
-  return new Promise((resolve) => {
-    let settled = false;
-    let timeoutRef: ReturnType<typeof setTimeout> | undefined;
-
-    const finalize = (messages: string) => {
-      if (settled) {
-        return;
-      }
-
-      settled = true;
-      if (timeoutRef) {
-        clearTimeout(timeoutRef);
-      }
-      connection.events.onCannedMessageModulePacket.unsubscribe(handleResponse);
-      resolve(messages);
-    };
-
-    const handleResponse = (response: { data: string }) => {
-      finalize(response.data ?? "");
-    };
-
-    connection.events.onCannedMessageModulePacket.subscribe(handleResponse);
-
-    timeoutRef = setTimeout(() => {
-      finalize("");
-    }, timeoutMs);
-
-    const request = create(Protobuf.Admin.AdminMessageSchema, {
-      payloadVariant: {
-        case: "getCannedMessageModuleMessagesRequest",
-        value: true,
-      },
-    });
-
-    connection
-      .sendPacket(
-        toBinary(Protobuf.Admin.AdminMessageSchema, request),
-        Protobuf.Portnums.PortNum.ADMIN_APP,
-        "self",
-      )
-      .catch(() => {
-        finalize("");
-      });
-  });
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> => {
