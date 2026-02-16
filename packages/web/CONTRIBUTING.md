@@ -41,6 +41,9 @@ pnpm --filter @meshtastic/web dev
 Once running, the site will be available at:  
 👉 **http://localhost:3000**
 
+> [!WARNING]
+> `vite dev` is for local development only. For public/exposed instances, serve static build artifacts generated with `pnpm --filter meshtastic-web build`.
+
 ---
 
 ## 🗂 Repository Structure
