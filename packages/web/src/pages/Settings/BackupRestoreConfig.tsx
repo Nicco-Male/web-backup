@@ -1,4 +1,3 @@
-import { create } from "@bufbuild/protobuf";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,7 +20,6 @@ import {
   parseConfigBackupYaml,
   type ConfigBackupPayload,
 } from "@core/utils/configBackup.ts";
-import { Protobuf } from "@meshtastic/core";
 import { DownloadIcon, UploadIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
@@ -102,13 +100,7 @@ export const BackupRestoreConfig = () => {
 
   const diffSummary = useMemo(() => {
     if (!backupPreview) {
-      return {
-        configDiffs: 0,
-        moduleDiffs: 0,
-        channelDiffs: 0,
-        ownerDiff: false,
-        cannedMessagesDiff: false,
-      };
+      return { configDiffs: 0, moduleDiffs: 0, channelDiffs: 0 };
     }
 
     const configDiffs = CONFIG_VARIANTS.filter((variant) =>
@@ -133,34 +125,15 @@ export const BackupRestoreConfig = () => {
       isDifferent(existingChannels.get(index), previewChannels.get(index)),
     ).length;
 
-    const currentUser = getMyNode()?.user;
-    const ownerLong = backupPreview.owner?.trim();
-    const ownerShort = backupPreview.ownerShort?.trim();
-    const ownerDiff =
-      !!(
-        (ownerLong && ownerLong !== currentUser?.longName) ||
-        (ownerShort && ownerShort !== currentUser?.shortName)
-      );
-
-    const cannedMessagesDiff = backupPreview.cannedMessages !== undefined;
-
-    return {
-      configDiffs,
-      moduleDiffs,
-      channelDiffs,
-      ownerDiff,
-      cannedMessagesDiff,
-    };
-  }, [backupPreview, channels, config, moduleConfig, getMyNode]);
+    return { configDiffs, moduleDiffs, channelDiffs };
+  }, [backupPreview, channels, config, moduleConfig]);
 
   const hasValidPreview = validationErrors.length === 0 && backupPreview !== null;
   const hasChangesToApply =
     hasValidPreview &&
     (diffSummary.configDiffs > 0 ||
       diffSummary.moduleDiffs > 0 ||
-      diffSummary.channelDiffs > 0 ||
-      diffSummary.ownerDiff ||
-      diffSummary.cannedMessagesDiff);
+      diffSummary.channelDiffs > 0);
 
   const onFileSelected = async (file?: File | null) => {
     if (!file) {
@@ -200,34 +173,6 @@ export const BackupRestoreConfig = () => {
       return;
     }
 
-    const ownerLong = backupPreview.owner?.trim();
-    const ownerShort = backupPreview.ownerShort?.trim();
-    if (ownerLong || ownerShort) {
-      const currentUser = getMyNode()?.user;
-      const nextLong = ownerLong ?? currentUser?.longName;
-      const nextShort = ownerShort ?? currentUser?.shortName;
-
-      if (
-        nextLong &&
-        nextShort &&
-        (nextLong !== currentUser?.longName || nextShort !== currentUser?.shortName)
-      ) {
-        setChange(
-          { type: "user" },
-          create(Protobuf.Mesh.UserSchema, {
-            id: currentUser?.id ?? "",
-            longName: nextLong,
-            shortName: nextShort,
-            isLicensed: currentUser?.isLicensed ?? false,
-            isUnmessageable: currentUser?.isUnmessageable ?? false,
-            role: currentUser?.role,
-            publicKey: currentUser?.publicKey,
-            hwModel: currentUser?.hwModel,
-          }),
-        );
-      }
-    }
-
     CONFIG_VARIANTS.forEach((variant) => {
       const backupValue = backupPreview.config[variant];
       if (!isDifferent(config[variant], backupValue)) {
@@ -257,24 +202,6 @@ export const BackupRestoreConfig = () => {
       }
       setChange({ type: "channel", index }, backupChannel);
     });
-
-    if (backupPreview.cannedMessages !== undefined) {
-      const cannedMessagesMessage = create(Protobuf.Admin.AdminMessageSchema, {
-        payloadVariant: {
-          case: "setCannedMessageModuleMessages",
-          value: backupPreview.cannedMessages,
-        },
-      });
-
-      setChange(
-        {
-          type: "adminMessage",
-          variant: "other",
-          id: "restore-canned-messages",
-        },
-        cannedMessagesMessage,
-      );
-    }
 
     toast({
       title: t("backupRestore.toastQueued.title"),
