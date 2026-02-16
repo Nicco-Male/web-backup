@@ -44,21 +44,32 @@ export async function testHttpReachable(
   url: string,
   timeoutMs = 2500,
 ): Promise<boolean> {
-  try {
+  const normalizedUrl = url.replace(/\/+$/, "");
+  const probes = [
+    normalizedUrl,
+    `${normalizedUrl}/api/v1/toradio`,
+  ];
+
+  for (const probeUrl of probes) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
-    // Use no-cors to avoid CORS failure; opaque responses resolve but status is 0
-    await fetch(url, {
-      method: "GET",
-      mode: "no-cors",
-      cache: "no-store",
-      signal: controller.signal,
-    });
-    clearTimeout(timer);
-    return true;
-  } catch {
-    return false;
+    try {
+      // no-cors avoids false negatives due to missing CORS headers.
+      await fetch(probeUrl, {
+        method: "HEAD",
+        mode: "no-cors",
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      return true;
+    } catch {
+      // Try next probe before declaring the node unreachable.
+    } finally {
+      clearTimeout(timer);
+    }
   }
+
+  return false;
 }
 
 export function connectionTypeIcon(type: ConnectionType): LucideIcon {
