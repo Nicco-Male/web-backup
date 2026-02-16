@@ -1,7 +1,7 @@
 import { create } from "@bufbuild/protobuf";
 import { Protobuf } from "@meshtastic/core";
-import { describe, expect, it, vi } from "vitest";
-import { createConfigBackupYaml, fetchCannedMessages, parseConfigBackupYaml } from "./configBackup.ts";
+import { describe, expect, it } from "vitest";
+import { createConfigBackupYaml, parseConfigBackupYaml } from "./configBackup.ts";
 
 describe("createConfigBackupYaml", () => {
   const createSamplePayload = () => {
@@ -164,7 +164,7 @@ describe("createConfigBackupYaml", () => {
       ...createSamplePayload(),
       owner: "Nicco Pisa Berry 🇮🇹",
       ownerShort: "NPB",
-      cannedMessages: "Hi|Bye",
+      cannedMessages: ["Hi", "Bye"],
     });
 
     expect(yaml).toContain("canned_messages: Hi|Bye");
@@ -251,49 +251,5 @@ channels:
 
     expect(parsed.errors).toEqual([]);
     expect(parsed.backup?.channels[0]?.index).toBe(0);
-  });
-});
-
-
-describe("fetchCannedMessages", () => {
-  it("returns canned messages response when device answers", async () => {
-    const subscribe = vi.fn((handler: (payload: { data: string }) => void) => {
-      setTimeout(() => handler({ data: "Hi|Bye|Yes" }), 0);
-    });
-    const unsubscribe = vi.fn();
-    const sendPacket = vi.fn().mockResolvedValue(1);
-
-    const connection = {
-      events: {
-        onCannedMessageModulePacket: {
-          subscribe,
-          unsubscribe,
-        },
-      },
-      sendPacket,
-    } as unknown as Parameters<typeof fetchCannedMessages>[0];
-
-    await expect(fetchCannedMessages(connection, 100)).resolves.toBe("Hi|Bye|Yes");
-    expect(sendPacket).toHaveBeenCalledTimes(1);
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
-  });
-
-  it("returns empty string on timeout", async () => {
-    const subscribe = vi.fn();
-    const unsubscribe = vi.fn();
-
-    const connection = {
-      events: {
-        onCannedMessageModulePacket: {
-          subscribe,
-          unsubscribe,
-        },
-      },
-      sendPacket: vi.fn().mockResolvedValue(1),
-    } as unknown as Parameters<typeof fetchCannedMessages>[0];
-
-    await expect(fetchCannedMessages(connection, 1)).resolves.toBe("");
-    expect(subscribe).toHaveBeenCalledTimes(1);
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
   });
 });
