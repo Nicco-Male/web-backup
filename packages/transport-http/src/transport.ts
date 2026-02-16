@@ -39,7 +39,7 @@ export class TransportHTTP implements Types.Transport {
   private closingByUser = false;
 
   /**
-   * Create a connected HTTP transport.
+   * Probe the device and return a connected HTTP transport.
    *
    * @param address Hostname or IP address (with optional port).
    * @param tls Use HTTPS if true, HTTP otherwise.
@@ -49,6 +49,9 @@ export class TransportHTTP implements Types.Transport {
     tls?: boolean,
   ): Promise<TransportHTTP> {
     const connectionUrl = `${tls ? "https" : "http"}://${address}`;
+    await fetch(`${connectionUrl}/api/v1/toradio`, {
+      method: "OPTIONS",
+    });
     return new TransportHTTP(connectionUrl);
   }
 
