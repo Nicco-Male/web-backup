@@ -10,12 +10,12 @@ import {
 describe("createConfigBackupFileName", () => {
   it("includes sanitized long name in the file name", () => {
     const fileName = createConfigBackupFileName({
-      ownerLongName: "Nicco T1000e it/ Nmøb",
+      ownerLongName: "Node Long Name / Test",
       now: new Date("2026-02-16T15:51:34.580Z"),
     });
 
     expect(fileName).toBe(
-      "meshtastic_config_backup_Nicco_T1000e_it_Nmøb_2026-02-16T15-51-34-580Z.yaml",
+      "meshtastic_config_backup_Node_Long_Name_Test_2026-02-16T15-51-34-580Z.yaml",
     );
   });
 
