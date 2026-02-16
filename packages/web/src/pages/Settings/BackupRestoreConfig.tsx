@@ -12,6 +12,7 @@ import {
 import { Button } from "@components/UI/Button.tsx";
 import { useToast } from "@core/hooks/useToast.ts";
 import { useDevice, useNodeDB } from "@core/stores";
+import { fetchCannedMessages } from "@core/utils/cannedMessages.ts";
 import {
   createConfigBackupYaml,
   getLocationFromNode,
@@ -53,7 +54,7 @@ const isDifferent = (left: unknown, right: unknown): boolean => {
 };
 
 export const BackupRestoreConfig = () => {
-  const { channels, config, moduleConfig, setChange } = useDevice();
+  const { channels, config, moduleConfig, setChange, connection } = useDevice();
   const { getMyNode } = useNodeDB();
   const { toast } = useToast();
   const { t } = useTranslation(["config", "dialog"]);
@@ -64,8 +65,9 @@ export const BackupRestoreConfig = () => {
     null,
   );
 
-  const downloadConfigBackup = () => {
+  const downloadConfigBackup = async () => {
     const myNode = getMyNode();
+    const cannedMessages = await fetchCannedMessages(connection);
     const backupYaml = createConfigBackupYaml({
       channels,
       config,
@@ -73,6 +75,7 @@ export const BackupRestoreConfig = () => {
       owner: myNode?.user?.longName,
       ownerShort: myNode?.user?.shortName,
       location: getLocationFromNode(myNode),
+      cannedMessages,
     });
 
     const now = new Date().toISOString().replace(/[:.]/g, "-");

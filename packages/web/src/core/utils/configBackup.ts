@@ -442,7 +442,7 @@ export const createConfigBackupYaml = ({
   owner?: string;
   ownerShort?: string;
   location?: { lat?: number; lon?: number };
-  cannedMessages?: string[];
+  cannedMessages?: string | string[];
 }) => {
   const configJson = normalizeCliEncodedBytesForExport(
     toBackupJson(Protobuf.LocalOnly.LocalConfigSchema, config),
@@ -552,8 +552,12 @@ export const createConfigBackupYaml = ({
     ),
   };
 
+  const cannedMessagesValue = Array.isArray(cannedMessages)
+    ? cannedMessages.join("|")
+    : (cannedMessages ?? "");
+
   const backup = pruneEmpty({
-    canned_messages: (cannedMessages ?? []).join("|"),
+    canned_messages: cannedMessagesValue,
     channel_url: createChannelUrl({ channels, loraConfig: config.lora }),
     config: orderedConfig,
     location:
