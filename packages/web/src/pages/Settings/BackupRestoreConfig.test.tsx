@@ -10,10 +10,6 @@ vi.mock("@core/stores", () => ({
     config: {},
     moduleConfig: {},
     setChange: mockSetChange,
-    connection: undefined,
-  }),
-  useNodeDB: () => ({
-    getMyNode: () => undefined,
   }),
 }));
 
